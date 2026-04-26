@@ -38,12 +38,8 @@ Produce a structured resolution recommendation.
 
 ## Input Format
 
-```
-Narrative: {{consumer_narrative}}
-Classification: {{classification_json}}
-Risk Assessment: {{risk_json}}
-Similar resolutions: {{retrieved_resolutions}}
-```
+The user message will provide the case narrative, classification JSON, risk
+assessment JSON, and any retrieved similar-resolution context.
 
 ## Output Format
 

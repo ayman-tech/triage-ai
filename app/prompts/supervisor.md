@@ -36,11 +36,11 @@ You are the **supervisor** of an agentic consumer-complaint processing system. Y
 
 Return a JSON object:
 ```json
-{{
+{
   "next_agent": "<agent name or FINISH>",
   "reasoning": "<1-2 sentence explanation of why this agent is next>",
   "instructions": "<specific guidance for the agent, or empty string>"
-}}
+}
 ```
 
 Be concise. Focus on routing decisions, not on doing the specialist work yourself.
