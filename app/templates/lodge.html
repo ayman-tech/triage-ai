@@ -25,6 +25,28 @@
     box-shadow: 0 4px 20px rgba(27, 28, 26, 0.06), 0 8px 40px rgba(27, 28, 26, 0.04);
   }
 
+  /* Editable card fields */
+  [contenteditable] {
+    outline: none;
+    border-radius: 4px;
+    transition: background 0.15s, box-shadow 0.15s;
+    cursor: text;
+    min-width: 2ch;
+    display: inline-block;
+  }
+  [contenteditable]:hover {
+    background: rgb(var(--surface-container-high) / 0.5);
+    box-shadow: 0 0 0 2px rgb(var(--outline-variant) / 0.4);
+  }
+  [contenteditable]:focus {
+    background: rgb(var(--surface-container-highest) / 0.6);
+    box-shadow: 0 0 0 2px rgb(var(--primary) / 0.35);
+  }
+  [contenteditable].multiline {
+    display: block;
+    white-space: pre-wrap;
+  }
+
   /* Ambient voice circle */
   #voice-circle-outer { width: 220px; height: 220px; }
   #voice-circle-mid   { width: 160px; height: 160px; }
@@ -44,7 +66,7 @@
 <div class="-m-8 flex overflow-hidden" style="height:calc(100vh - 3.5rem);">
 
   <!-- ═══ CENTER: Chat Canvas ═══ -->
-  <main class="flex-1 flex flex-col bg-surface overflow-hidden relative">
+  <main class="flex-1 min-w-0 flex flex-col bg-surface overflow-hidden relative">
 
     <!-- Subheader strip -->
     <div class="flex items-center justify-between px-8 h-14 bg-surface-container-low shrink-0">
@@ -129,20 +151,12 @@
     <!-- Input bar -->
     <div class="px-8 pb-6 shrink-0 bg-gradient-to-t from-surface via-surface/95 to-transparent pt-4">
       <div class="bg-surface-container-lowest rounded-xl shadow-xl p-2 flex items-end gap-2">
-        <!-- Left actions -->
-        <div class="flex items-center gap-1 p-1.5">
-          <input id="file-upload-input" type="file" class="hidden" multiple />
-          <button id="file-upload-btn" class="p-2 text-on-surface-variant hover:text-primary hover:bg-surface-container-low rounded-lg transition-colors"
-                  title="Attach file">
-            <span class="material-symbols-outlined text-xl">add</span>
-          </button>
-        </div>
         <!-- Textarea -->
         <textarea id="chat-input"
                   rows="1"
                   placeholder="What happened? (e.g., charged twice for the same payment…)"
-                  class="flex-1 border-none focus:ring-0 bg-transparent py-3 text-sm resize-none placeholder:text-on-surface-variant/50 no-scrollbar text-on-surface leading-relaxed"></textarea>
-        <!-- Right actions -->
+                  class="flex-1 border-none focus:ring-0 bg-transparent px-3 py-3 text-sm resize-none placeholder:text-on-surface-variant/50 no-scrollbar text-on-surface leading-relaxed"></textarea>
+        <!-- Send button -->
         <div class="flex items-center gap-1 p-1.5">
           <button id="send-btn"
                   class="aurora-gradient text-white p-2.5 rounded-lg shadow-sm hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
@@ -158,58 +172,58 @@
 
   </main>
 
-  <!-- ═══ RIGHT PANEL: Uploaded Documents + Tips ═══ -->
-  <aside class="w-80 bg-surface-container-low flex flex-col p-6 overflow-y-auto no-scrollbar shrink-0">
-    <div class="mb-8">
-      <div class="flex items-center justify-between gap-3 mb-4">
-        <h3 class="text-[10px] font-black uppercase tracking-widest text-on-surface-variant">Uploaded Documents</h3>
-        <button id="sidebar-upload-btn"
-                type="button"
-                class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-surface-container-highest text-primary text-xs font-bold hover:bg-surface-container-high transition-colors">
-          <span class="material-symbols-outlined text-base">upload_file</span>
-          Upload
-        </button>
-      </div>
-      <div id="uploaded-documents-panel" class="space-y-3">
-        <div id="uploaded-documents-empty" class="rounded-xl bg-surface-container-highest/70 p-4 text-sm text-on-surface-variant">
-          Upload statements, notices, screenshots, or correspondence to keep them attached to this intake session.
-        </div>
-        <div id="uploaded-documents-list" class="space-y-3"></div>
-      </div>
+  <!-- ═══ RIGHT PANEL: Complaint Summary ═══ -->
+  <aside class="flex-1 min-w-0 bg-surface-container-low flex flex-col overflow-hidden shrink-0 border-l border-outline-variant/20">
+
+    <!-- Panel header -->
+    <div class="px-6 h-14 flex items-center gap-3 bg-surface-container-low shrink-0 border-b border-outline-variant/20">
+      <span class="material-symbols-outlined text-primary text-lg" style="font-variation-settings:'FILL' 1;">summarize</span>
+      <h3 class="text-[10px] font-black uppercase tracking-widest text-on-surface-variant">Complaint Summary</h3>
     </div>
 
-    <!-- Tips -->
-    <div class="mt-auto">
-      <h3 class="text-[10px] font-black uppercase tracking-widest text-on-surface-variant mb-4">Tips</h3>
-      <ul class="space-y-3 text-xs text-on-surface-variant">
-        <li class="flex items-start gap-2">
-          <span class="material-symbols-outlined text-secondary text-sm mt-0.5 shrink-0" style="font-variation-settings:'FILL' 1;">check_circle</span>
-          Include product + what went wrong
-        </li>
-        <li class="flex items-start gap-2">
-          <span class="material-symbols-outlined text-secondary text-sm mt-0.5 shrink-0" style="font-variation-settings:'FILL' 1;">check_circle</span>
-          Add date and any amounts if known
-        </li>
-        <li class="flex items-start gap-2">
-          <span class="material-symbols-outlined text-secondary text-sm mt-0.5 shrink-0" style="font-variation-settings:'FILL' 1;">check_circle</span>
-          Mention your desired resolution
-        </li>
-        <li class="flex items-start gap-2">
-          <span class="material-symbols-outlined text-error text-sm mt-0.5 shrink-0" style="font-variation-settings:'FILL' 1;">block</span>
-          Never share full card, account, or SSN numbers
-        </li>
-        {% if intake_tts_enabled %}
-        <li class="flex items-start gap-2">
-          <span class="material-symbols-outlined text-primary text-sm mt-0.5 shrink-0">mic</span>
-          <span><strong>Voice mode:</strong> pause after speaking to send; agent replies aloud then listens again.</span>
-        </li>
-        {% else %}
-        <li class="flex items-start gap-2">
-          <span class="material-symbols-outlined text-on-surface-variant text-sm mt-0.5 shrink-0">mic</span>
-          <span>Set <code class="text-[10px] bg-surface-container px-1 rounded">ELEVENLABS_API_KEY</code> for spoken replies.</span>
-        </li>
-        {% endif %}
-      </ul>
+    <!-- Complaint card (populated by JS once intake is sufficient) -->
+    <div class="flex-1 overflow-y-auto no-scrollbar p-6">
+      <div id="intake-summary-card-root">
+        <!-- Empty state -->
+        <div id="intake-summary-card-empty" class="h-full flex flex-col items-center justify-center text-center py-16 gap-4">
+          <div class="w-14 h-14 rounded-full bg-surface-container-highest flex items-center justify-center">
+            <span class="material-symbols-outlined text-on-surface-variant text-2xl">receipt_long</span>
+          </div>
+          <div>
+            <p class="text-sm font-semibold text-on-surface-variant">No summary yet</p>
+            <p class="text-xs text-on-surface-variant/70 mt-1">Your complaint details will appear here as the conversation progresses.</p>
+          </div>
+          <ul class="text-left space-y-2.5 text-xs text-on-surface-variant mt-4 w-full max-w-xs">
+            <li class="flex items-start gap-2">
+              <span class="material-symbols-outlined text-secondary text-sm mt-0.5 shrink-0" style="font-variation-settings:'FILL' 1;">check_circle</span>
+              Include product + what went wrong
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="material-symbols-outlined text-secondary text-sm mt-0.5 shrink-0" style="font-variation-settings:'FILL' 1;">check_circle</span>
+              Add date and any amounts if known
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="material-symbols-outlined text-secondary text-sm mt-0.5 shrink-0" style="font-variation-settings:'FILL' 1;">check_circle</span>
+              Mention your desired resolution
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="material-symbols-outlined text-error text-sm mt-0.5 shrink-0" style="font-variation-settings:'FILL' 1;">block</span>
+              Never share full card, account, or SSN numbers
+            </li>
+            {% if intake_tts_enabled %}
+            <li class="flex items-start gap-2">
+              <span class="material-symbols-outlined text-primary text-sm mt-0.5 shrink-0">mic</span>
+              <span><strong>Voice mode:</strong> pause after speaking to send; agent replies aloud then listens again.</span>
+            </li>
+            {% else %}
+            <li class="flex items-start gap-2">
+              <span class="material-symbols-outlined text-on-surface-variant text-sm mt-0.5 shrink-0">mic</span>
+              <span>Set <code class="text-[10px] bg-surface-container px-1 rounded">ELEVENLABS_API_KEY</code> for spoken replies.</span>
+            </li>
+            {% endif %}
+          </ul>
+        </div>
+      </div>
     </div>
 
   </aside>
@@ -230,11 +244,6 @@
     const micBtn           = document.getElementById('mic-btn');
     const speechStatusEl   = document.getElementById('speech-status');
     const speechStatusBar  = document.getElementById('speech-status-bar');
-    const fileUploadBtn    = document.getElementById('file-upload-btn');
-    const sidebarUploadBtn = document.getElementById('sidebar-upload-btn');
-    const fileUploadInput  = document.getElementById('file-upload-input');
-    const uploadedDocsList = document.getElementById('uploaded-documents-list');
-    const uploadedDocsEmpty = document.getElementById('uploaded-documents-empty');
 
     const SpeechRecognition =
       typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition);
@@ -248,114 +257,7 @@
     let sessionId = null;
     let busy = false;
     let utteranceProcessing = false;
-    let uploadedDocuments = [];
     let currentPacket = null;
-
-    const formatFileSize = (bytes) => {
-      if (!Number.isFinite(bytes) || bytes <= 0) return 'Unknown size';
-      const units = ['B', 'KB', 'MB', 'GB'];
-      let value = bytes;
-      let index = 0;
-      while (value >= 1024 && index < units.length - 1) {
-        value /= 1024;
-        index += 1;
-      }
-      return `${value.toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
-    };
-
-    const fileIcon = (name) => {
-      const lower = String(name || '').toLowerCase();
-      if (lower.endsWith('.pdf')) return 'picture_as_pdf';
-      if (lower.endsWith('.doc') || lower.endsWith('.docx')) return 'description';
-      if (lower.endsWith('.png') || lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image';
-      return 'draft';
-    };
-
-    const renderUploadedDocuments = () => {
-      uploadedDocsList.innerHTML = '';
-      uploadedDocsEmpty.classList.toggle('hidden', uploadedDocuments.length > 0);
-      uploadedDocuments.forEach((doc, index) => {
-        const row = document.createElement('div');
-        row.className = 'flex items-start gap-3 rounded-xl bg-surface-container-lowest p-4 border border-outline-variant/10 shadow-sm';
-        row.innerHTML = `
-          <div class="w-11 h-11 rounded-full bg-surface-container-high flex items-center justify-center shrink-0">
-            <span class="material-symbols-outlined text-primary text-[20px]">${fileIcon(doc.name)}</span>
-          </div>
-          <div class="flex-1 min-w-0">
-            <div class="text-sm font-bold text-on-surface truncate">${escapeHtml(doc.name)}</div>
-            <div class="text-xs text-on-surface-variant mt-1">${escapeHtml(formatFileSize(doc.size))} • ${escapeHtml(doc.statusLabel || 'Uploaded')}</div>
-          </div>
-          <button type="button"
-                  class="remove-uploaded-doc p-2 text-on-surface-variant hover:text-error transition-colors"
-                  data-doc-index="${index}"
-                  data-doc-id="${escapeHtml(doc.id || '')}"
-                  title="Remove file">
-            <span class="material-symbols-outlined text-base">close</span>
-          </button>
-        `;
-        uploadedDocsList.appendChild(row);
-      });
-    };
-
-    const clearUploadedDocuments = () => {
-      uploadedDocuments = [];
-      if (fileUploadInput) fileUploadInput.value = '';
-      renderUploadedDocuments();
-    };
-
-    const syncUploadedDocumentsFromApi = (docs) => {
-      uploadedDocuments = (docs || []).map((doc) => ({
-        id: doc.id,
-        name: doc.original_filename,
-        size: doc.size_bytes,
-        type: doc.mime_type || null,
-        status: doc.extraction_status,
-        statusLabel: doc.extraction_status === 'processed'
-          ? 'Processed'
-          : doc.extraction_status === 'failed'
-            ? 'Processing failed'
-            : 'Processing',
-      }));
-      renderUploadedDocuments();
-      if (currentPacket && currentPacket.information_sufficiency === 'sufficient') {
-        upsertIntakeSummaryCard(currentPacket);
-      }
-    };
-
-    const loadSessionDocuments = async () => {
-      if (!sessionId) return;
-      const resp = await fetch(`/api/v1/intake/session/${encodeURIComponent(sessionId)}/documents`, { credentials: 'same-origin' });
-      const body = await resp.json().catch(() => []);
-      if (!resp.ok) throw new Error(body.detail || 'Could not load uploaded documents.');
-      syncUploadedDocumentsFromApi(body);
-    };
-
-    const uploadDocuments = async (files) => {
-      if (!sessionId || !files || !files.length) return;
-      const form = new FormData();
-      Array.from(files).forEach((file) => form.append('files', file));
-      const resp = await fetch(`/api/v1/intake/session/${encodeURIComponent(sessionId)}/documents`, {
-        method: 'POST',
-        credentials: 'same-origin',
-        body: form,
-      });
-      const body = await resp.json().catch(() => ({}));
-      if (!resp.ok) throw new Error(body.detail || 'Upload failed.');
-      await loadSessionDocuments();
-    };
-
-    const removeUploadedDocument = async (documentId) => {
-      if (!sessionId || !documentId) return;
-      const resp = await fetch(`/api/v1/intake/session/${encodeURIComponent(sessionId)}/documents/${encodeURIComponent(documentId)}`, {
-        method: 'DELETE',
-        credentials: 'same-origin',
-      });
-      if (!resp.ok) {
-        const body = await resp.json().catch(() => ({}));
-        throw new Error(body.detail || 'Could not remove uploaded document.');
-      }
-      await loadSessionDocuments();
-    };
 
     const stopPlayback = () => {
       if (currentAudio) { try { currentAudio.pause(); } catch (e) {} currentAudio = null; }
@@ -587,65 +489,58 @@
       const escList = Array.isArray(packet.escalation_reasons) ? packet.escalation_reasons.filter(Boolean) : [];
       const ref = sessionId ? sessionId.slice(0, 8).toUpperCase() : '—';
       const suff = packet.information_sufficiency || '';
-      const docCount = uploadedDocuments.length;
-      const supportingDocsDisplay = docCount > 0 ? `${docCount} file${docCount === 1 ? '' : 's'}` : disp(packet.has_supporting_docs);
+      const supportingDocsDisplay = disp(packet.has_supporting_docs);
       const badgeClass = suff === 'sufficient'
         ? 'bg-secondary-container text-on-secondary-container'
         : 'bg-surface-container-high text-on-surface-variant';
 
-      let root = document.getElementById('intake-summary-card-root');
-      if (!root) {
-        root = document.createElement('div');
-        root.id = 'intake-summary-card-root';
-        messagesEl.appendChild(root);
-      }
-      root.className = 'flex gap-4 max-w-5xl w-full';
+      const root = document.getElementById('intake-summary-card-root');
+      const emptyState = document.getElementById('intake-summary-card-empty');
+      if (emptyState) emptyState.remove();
+      root.className = '';
       root.innerHTML = `
-        <div class="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center shrink-0 shadow-sm border-2 border-surface self-start">
-          <span class="material-symbols-outlined text-on-secondary-container text-lg" style="font-variation-settings:'FILL' 1;">auto_awesome</span>
-        </div>
-        <div class="flex-1 intake-summary-card bg-surface-container-lowest rounded-xl border border-outline-variant/25 p-6 text-on-surface">
-          <div class="flex flex-wrap items-start justify-between gap-3 mb-2">
+        <div class="intake-summary-card bg-surface-container-lowest rounded-xl border border-outline-variant/25 p-5 text-on-surface">
+          <div class="flex flex-wrap items-start justify-between gap-3 mb-3">
             <div>
               <h3 class="font-headline font-bold text-lg text-primary leading-tight">Complaint intake summary</h3>
-              <p class="text-xs text-on-surface-variant mt-1">Session <span class="font-mono">#${escapeHtml(ref)}</span></p>
+              <p class="text-xs text-on-surface-variant mt-1">Session <span class="font-mono">#${escapeHtml(ref)}</span> · <span class="italic">Click any field to edit</span></p>
             </div>
             <span class="text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full ${badgeClass}">Ready to submit</span>
           </div>
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-            <div class="rounded-lg bg-surface-container-low px-3 py-2.5 col-span-2 sm:col-span-1">
-              <p class="text-[10px] font-bold uppercase tracking-wide text-on-surface-variant">Amount</p>
-              <p class="text-sm font-semibold text-on-surface mt-0.5 break-words">${amtDisp}</p>
+          <div class="grid grid-cols-2 gap-3 mb-4">
+            <div class="rounded-lg bg-surface-container-low px-3 py-2.5">
+              <p class="text-[10px] font-bold uppercase tracking-wide text-on-surface-variant mb-0.5">Amount</p>
+              <span class="text-sm font-semibold text-on-surface" contenteditable="true" data-field="amount">${escapeHtml(amtStr || '—')}</span>
             </div>
             <div class="rounded-lg bg-surface-container-low px-3 py-2.5">
-              <p class="text-[10px] font-bold uppercase tracking-wide text-on-surface-variant">Currency</p>
-              <p class="text-sm font-semibold text-secondary mt-0.5">${curStr ? escapeHtml(curStr) : '—'}</p>
+              <p class="text-[10px] font-bold uppercase tracking-wide text-on-surface-variant mb-0.5">Currency</p>
+              <span class="text-sm font-semibold text-secondary" contenteditable="true" data-field="currency">${curStr ? escapeHtml(curStr) : '—'}</span>
             </div>
             <div class="rounded-lg bg-surface-container-low px-3 py-2.5">
-              <p class="text-[10px] font-bold uppercase tracking-wide text-on-surface-variant">Urgency</p>
-              <p class="text-sm font-semibold text-on-surface mt-0.5">${disp(urgency)}</p>
+              <p class="text-[10px] font-bold uppercase tracking-wide text-on-surface-variant mb-0.5">Urgency</p>
+              <span class="text-sm font-semibold text-on-surface" contenteditable="true" data-field="urgency">${disp(urgency)}</span>
             </div>
             <div class="rounded-lg bg-surface-container-low px-3 py-2.5">
-              <p class="text-[10px] font-bold uppercase tracking-wide text-on-surface-variant">Sufficiency</p>
-              <p class="text-sm font-semibold text-secondary mt-0.5">${escapeHtml(suff || '—')}</p>
+              <p class="text-[10px] font-bold uppercase tracking-wide text-on-surface-variant mb-0.5">Sufficiency</p>
+              <span class="text-sm font-semibold text-secondary">${escapeHtml(suff || '—')}</span>
             </div>
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4 text-sm">
             <div class="rounded-lg bg-surface-container-low/60 px-3 py-2.5">
-              <p class="text-[10px] font-bold uppercase text-on-surface-variant">Date of incident</p>
-              <p class="font-medium mt-0.5">${dateInc ? escapeHtml(dateInc) : '—'}</p>
+              <p class="text-[10px] font-bold uppercase text-on-surface-variant mb-0.5">Date of incident</p>
+              <span class="font-medium" contenteditable="true" data-field="date_of_incident">${dateInc ? escapeHtml(dateInc) : '—'}</span>
             </div>
             <div class="rounded-lg bg-surface-container-low/60 px-3 py-2.5">
-              <p class="text-[10px] font-bold uppercase text-on-surface-variant">Merchant / counterparty</p>
-              <p class="font-medium mt-0.5 break-words">${merchant ? escapeHtml(merchant) : '—'}</p>
+              <p class="text-[10px] font-bold uppercase text-on-surface-variant mb-0.5">Merchant / counterparty</p>
+              <span class="font-medium break-words" contenteditable="true" data-field="merchant_or_counterparty">${merchant ? escapeHtml(merchant) : '—'}</span>
             </div>
             <div class="rounded-lg bg-surface-container-low/60 px-3 py-2.5">
-              <p class="text-[10px] font-bold uppercase text-on-surface-variant">Intent</p>
-              <p class="font-medium mt-0.5">${disp(intent)}</p>
+              <p class="text-[10px] font-bold uppercase text-on-surface-variant mb-0.5">Intent</p>
+              <span class="font-medium" contenteditable="true" data-field="intent">${disp(intent)}</span>
             </div>
             <div class="rounded-lg bg-surface-container-low/60 px-3 py-2.5">
-              <p class="text-[10px] font-bold uppercase text-on-surface-variant">Product hint</p>
-              <p class="font-medium mt-0.5 truncate">${escapeHtml(prod)}</p>
+              <p class="text-[10px] font-bold uppercase text-on-surface-variant mb-0.5">Product</p>
+              <span class="font-medium" contenteditable="true" data-field="product_hint">${escapeHtml(prod)}</span>
             </div>
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4 text-xs">
@@ -662,11 +557,10 @@
               <span class="font-semibold text-on-surface">${disp(packet.account_or_reference_available)}</span>
             </div>
           </div>
-          ${desired ? `
           <div class="mb-4 rounded-lg bg-primary-fixed/10 border border-primary/15 px-4 py-3">
             <p class="text-[10px] font-bold uppercase tracking-wider text-primary mb-1">Desired resolution</p>
-            <p class="text-sm text-on-surface leading-relaxed whitespace-pre-wrap">${escapeHtml(desired)}</p>
-          </div>` : ''}
+            <span class="multiline text-sm text-on-surface leading-relaxed" contenteditable="true" data-field="desired_resolution">${escapeHtml(desired || '—')}</span>
+          </div>
           ${showCust ? `
           <div class="mb-4 rounded-lg bg-surface-container-low px-4 py-3 border border-outline-variant/15">
             <p class="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant mb-1">Customer summary</p>
@@ -681,16 +575,16 @@
             <p class="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant mb-2 flex items-center gap-1">
               <span class="material-symbols-outlined text-sm">subject</span> Issue narration
             </p>
-            <p class="text-sm leading-relaxed text-on-surface whitespace-pre-wrap rounded-lg bg-surface-container-low/80 p-4 border border-outline-variant/15">${escapeHtml(narr)}</p>
+            <span class="multiline text-sm leading-relaxed text-on-surface rounded-lg bg-surface-container-low/80 p-4 border border-outline-variant/15" contenteditable="true" data-field="narrative_for_case">${escapeHtml(narr)}</span>
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6 text-sm">
             <div>
               <span class="text-[10px] font-bold uppercase text-on-surface-variant">Issue hint</span>
-              <p class="font-medium mt-0.5">${escapeHtml(iss)}</p>
+              <p class="font-medium mt-0.5"><span contenteditable="true" data-field="issue_hint">${escapeHtml(iss)}</span></p>
             </div>
             <div>
               <span class="text-[10px] font-bold uppercase text-on-surface-variant">Sub-issue hint</span>
-              <p class="font-medium mt-0.5">${escapeHtml(subIss)}</p>
+              <p class="font-medium mt-0.5"><span contenteditable="true" data-field="sub_issue_hint">${escapeHtml(subIss)}</span></p>
             </div>
           </div>
           <div class="flex flex-wrap gap-3 pt-2 border-t border-outline-variant/15">
@@ -711,13 +605,22 @@
       const cont = document.getElementById('intake-card-continue');
       if (sub) sub.addEventListener('click', (e) => { e.preventDefault(); finalize(); }, { once: false });
       if (cont) cont.addEventListener('click', (e) => { e.preventDefault(); continueRefining(); }, { once: false });
-      messagesEl.appendChild(root);
-      messagesEl.scrollTop = messagesEl.scrollHeight;
     };
 
     const removeIntakeSummaryCard = () => {
       const root = document.getElementById('intake-summary-card-root');
-      if (root) root.remove();
+      if (!root) return;
+      root.className = '';
+      root.innerHTML = `
+        <div id="intake-summary-card-empty" class="h-full flex flex-col items-center justify-center text-center py-16 gap-4">
+          <div class="w-14 h-14 rounded-full bg-surface-container-highest flex items-center justify-center">
+            <span class="material-symbols-outlined text-on-surface-variant text-2xl">receipt_long</span>
+          </div>
+          <div>
+            <p class="text-sm font-semibold text-on-surface-variant">No summary yet</p>
+            <p class="text-xs text-on-surface-variant/70 mt-1">Your complaint details will appear here as the conversation progresses.</p>
+          </div>
+        </div>`;
     };
 
     const continueRefining = () => {
@@ -781,7 +684,6 @@
       sessionId = null;
       messagesEl.innerHTML = '';
       removeIntakeSummaryCard();
-      clearUploadedDocuments();
       sendBtn.disabled = true;
       busy = true;
       syncMicAvailability();
@@ -798,7 +700,6 @@
         const greeting = raw.agent_message || 'Hello.';
         appendMessage('agent', greeting);
         currentPacket = raw.packet || null;
-        await loadSessionDocuments();
         sendBtn.disabled = false;
         if (useVoice && INTAKE_TTS_ENABLED) await playAgentTts(greeting);
       } catch (e) {
@@ -875,6 +776,16 @@
       if (el) el.classList.remove('hidden');
     };
 
+    const collectCardEdits = () => {
+      const overrides = {};
+      document.querySelectorAll('#intake-summary-card-root [data-field]').forEach((el) => {
+        const field = el.getAttribute('data-field');
+        const val = (el.textContent || '').trim();
+        if (val && val !== '—') overrides[field] = val;
+      });
+      return overrides;
+    };
+
     const finalize = async () => {
       if (!sessionId || busy) return;
       setError(null);
@@ -886,6 +797,14 @@
       if (cont) cont.disabled = true;
       busy = true;
       try {
+        const overrides = collectCardEdits();
+        if (Object.keys(overrides).length) {
+          await fetch(`/api/v1/intake/session/${encodeURIComponent(sessionId)}/packet`, {
+            method: 'PATCH', credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(overrides),
+          });
+        }
         const resp = await fetch(`/api/v1/intake/session/${encodeURIComponent(sessionId)}/finalize`, { method: 'POST', credentials: 'same-origin' });
         const body = await resp.json().catch(() => ({}));
         if (!resp.ok) throw new Error(body.detail || 'Finalize failed.');
@@ -893,7 +812,6 @@
         messagesEl.innerHTML = '';
         sessionId = null;
         currentPacket = null;
-        clearUploadedDocuments();
         showSubmitSuccessModal(body);
         await startSession();
       } catch (e) {
@@ -905,29 +823,6 @@
 
     document.getElementById('submit-success-dismiss')?.addEventListener('click', () => {
       document.getElementById('submit-success-modal')?.classList.add('hidden');
-    });
-
-    fileUploadBtn?.addEventListener('click', () => fileUploadInput?.click());
-    sidebarUploadBtn?.addEventListener('click', () => fileUploadInput?.click());
-    fileUploadInput?.addEventListener('change', async (e) => {
-      try {
-        setError(null);
-        await uploadDocuments(e.target.files);
-      } catch (err) {
-        setError(err && err.message ? err.message : 'Upload failed.');
-      } finally {
-        if (fileUploadInput) fileUploadInput.value = '';
-      }
-    });
-    uploadedDocsList?.addEventListener('click', async (e) => {
-      const btn = e.target.closest('.remove-uploaded-doc');
-      if (!btn) return;
-      try {
-        setError(null);
-        await removeUploadedDocument(btn.getAttribute('data-doc-id'));
-      } catch (err) {
-        setError(err && err.message ? err.message : 'Could not remove uploaded document.');
-      }
     });
 
     newSessionBtn.addEventListener('click', () => startSession());
@@ -944,7 +839,6 @@
     });
 
     syncMicAvailability();
-    renderUploadedDocuments();
     startSession();
   })();
 </script>
