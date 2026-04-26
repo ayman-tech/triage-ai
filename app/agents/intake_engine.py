@@ -657,6 +657,27 @@ def process_intake_message(session_id: str, user_message: str, model_name: str |
     return state
 
 
+_PATCH_ALLOWED_FIELDS = {
+    "amount", "currency", "date_of_incident", "merchant_or_counterparty",
+    "desired_resolution", "narrative_for_case", "urgency", "intent",
+    "product_hint", "issue_hint", "sub_issue_hint",
+}
+
+
+def patch_intake_packet(session_id: str, overrides: dict) -> IntakeSessionState:
+    """Merge manual field overrides into the session's intake packet."""
+    state = _load_session_state(session_id)
+    if state is None:
+        raise KeyError(f"Unknown intake session_id={session_id}")
+    current = state.packet.model_dump()
+    for key, value in overrides.items():
+        if key in _PATCH_ALLOWED_FIELDS:
+            current[key] = value if value not in ("", "—") else None
+    state.packet = IntakePacket.model_validate(current)
+    _persist_session_state(state)
+    return state
+
+
 def finalize_intake_session(session_id: str) -> Tuple[CaseCreate, IntakeSessionState]:
     """Build a CaseCreate from the intake session; caller is responsible for running the workflow.
 

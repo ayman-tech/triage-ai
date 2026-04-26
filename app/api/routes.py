@@ -35,7 +35,11 @@ from app.utils.case_ids import ensure_case_public_id, resolve_case_record
 from app.agents.intake_engine import (
     finalize_intake_session,
     get_intake_session,
+<<<<<<< HEAD
     link_intake_costs_to_case,
+=======
+    patch_intake_packet,
+>>>>>>> b326213e3197f3c677f9d782375de491d6fc2ca4
     process_intake_message,
     start_intake_session,
 )
@@ -663,6 +667,25 @@ async def remove_intake_document(request: Request, session_id: str, document_id:
     user_id = request.cookies.get("user_id")
     delete_session_document(session_id=session_id, document_id=document_id, user_id=user_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.patch(
+    "/intake/session/{session_id}/packet",
+    summary="Apply manual field overrides to an intake session's packet",
+    status_code=status.HTTP_200_OK,
+)
+async def patch_intake_packet_route(session_id: str, overrides: dict) -> dict:
+    """Merge user-edited fields into the live intake packet before finalizing."""
+    if get_intake_session(session_id) is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Unknown intake session_id={session_id}",
+        )
+    try:
+        state = patch_intake_packet(session_id, overrides)
+        return {"ok": True, "packet": state.packet.model_dump()}
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
 
 @router.post(
