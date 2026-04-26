@@ -133,8 +133,7 @@
     ] %}
     {% elif user.role == 'team' %}
     {% set nav_items = [
-      ("dashboard",  "/app",           "list_alt",     "My Queue"),
-      ("settings",   "/settings",      "settings",     "Settings"),
+      ("queue",      "/queue",         "list_alt",     "My Queue"),
     ] %}
     {% else %}
     {% set nav_items = [

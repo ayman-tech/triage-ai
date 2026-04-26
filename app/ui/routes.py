@@ -348,14 +348,16 @@ async def app_home(request: Request, page: int = 1, limit: int = 15, range: str 
 
 @router.get("/queue", include_in_schema=False)
 async def admin_queue(request: Request, page: int = 1, limit: int = 15):
-    """Admin complaint queue — full table + resolution history (design: admin_complaint_queue)."""
+    """Complaint queue for admin (all cases) and team (assigned cases only)."""
     user = _get_current_user(request)
     if user is None:
         return _redirect_to_login()
-    if user["role"] != "admin":
+    if user["role"] not in ("admin", "team"):
         return _redirect_to_dashboard()
 
     offset = (page - 1) * limit
+    is_team = user["role"] == "team"
+    team_company = user.get("company")
 
     with get_db() as db:
         active_query = (
@@ -363,30 +365,35 @@ async def admin_queue(request: Request, page: int = 1, limit: int = 15):
             .filter(~ComplaintCase.status.in_(list(_TERMINAL_STATUSES)))
             .order_by(ComplaintCase.created_at.desc())
         )
+        if is_team:
+            active_query = active_query.filter(ComplaintCase.team_assignment == team_company)
+
         total = active_query.count()
         rows = active_query.offset(offset).limit(limit).all()
         cases = [build_case_summary(row) for row in rows]
 
         active_pipeline = total
 
-        critical_count = (
+        critical_query = (
             db.query(RiskRecord)
             .join(ComplaintCase, ComplaintCase.id == RiskRecord.case_id)
             .filter(
                 RiskRecord.risk_level == "critical",
                 ~ComplaintCase.status.in_(list(_TERMINAL_STATUSES)),
             )
-            .count()
         )
+        if is_team:
+            critical_query = critical_query.filter(ComplaintCase.team_assignment == team_company)
+        critical_count = critical_query.count()
 
-        hist_rows = (
+        hist_query = (
             db.query(ComplaintCase)
             .filter(ComplaintCase.status.in_(list(_TERMINAL_STATUSES)))
             .order_by(ComplaintCase.updated_at.desc())
-            .limit(12)
-            .all()
         )
-        resolved_history = [build_case_summary(row) for row in hist_rows]
+        if is_team:
+            hist_query = hist_query.filter(ComplaintCase.team_assignment == team_company)
+        resolved_history = [build_case_summary(row) for row in hist_query.limit(12).all()]
 
     total_pages = max(1, (total + limit - 1) // limit)
 
@@ -536,8 +543,9 @@ async def update_complaint_status(
             return _redirect_to_dashboard()
 
         db_case.status = new_status
+        redirect_id = db_case.public_case_id or db_case.id
 
-    return RedirectResponse(url=f"/complaints/{db_case.public_case_id or db_case.id}", status_code=302)
+    return RedirectResponse(url=f"/complaints/{redirect_id}", status_code=302)
 
 
 @router.get("/trace/latest", include_in_schema=False)
