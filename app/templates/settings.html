@@ -215,6 +215,141 @@
           </div>
         </form>
       </div>
+
+      <!-- ── Product Knowledge Base ──────────────────────────────────── -->
+      <div class="bg-surface-container-lowest rounded-xl p-8 shadow-sm">
+        <div class="flex items-center justify-between gap-4 mb-6">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-tertiary-container rounded-lg flex items-center justify-center">
+              <span class="material-symbols-outlined text-on-tertiary-container">policy</span>
+            </div>
+            <div>
+              <h3 class="text-base font-headline font-bold text-on-surface">Product Knowledge Base</h3>
+              <p class="text-xs text-on-surface-variant">Upload policy documents per product. Each doc is chunked and stored in the vector DB.</p>
+            </div>
+          </div>
+          <button onclick="openPolicyModal(null)"
+                  class="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-secondary text-on-secondary text-sm font-semibold hover:opacity-90 transition-opacity shrink-0">
+            <span class="material-symbols-outlined text-sm">upload_file</span>
+            Upload Policy
+          </button>
+        </div>
+
+        {% set all_products = data.product_display_names.items() | list %}
+        {% if all_products %}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {% for product_key, product_display in all_products %}
+          {% set product_entries = data.policies_by_product.get(product_key, []) %}
+          <div class="bg-surface-container-low rounded-xl p-5 border border-outline-variant/10">
+            <!-- Product header -->
+            <div class="flex items-center justify-between gap-2 mb-3">
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary text-sm">folder</span>
+                <span class="text-sm font-bold text-on-surface">{{ product_display }}</span>
+              </div>
+              <div class="flex items-center gap-2">
+                {% if product_entries %}
+                <span class="text-[9px] px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container font-bold">
+                  {{ product_entries | length }} {{ 'policy' if product_entries | length == 1 else 'policies' }}
+                </span>
+                {% endif %}
+                <button onclick="openPolicyModal('{{ product_key }}')"
+                        class="p-1 rounded-lg hover:bg-primary/10 text-primary transition-colors" title="Upload policy">
+                  <span class="material-symbols-outlined text-sm">add</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Uploaded policies list -->
+            {% if product_entries %}
+            <div class="space-y-2">
+              {% for entry in product_entries %}
+              <div class="flex items-start justify-between gap-2 bg-surface-container rounded-lg px-3 py-2">
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    <span class="text-[10px] px-1.5 py-0.5 rounded bg-primary-fixed/50 text-on-primary-fixed-variant font-mono font-bold truncate">
+                      {{ entry.topic_display }}
+                    </span>
+                  </div>
+                  <p class="text-xs text-on-surface mt-1 truncate" title="{{ entry.title }}">{{ entry.title }}</p>
+                  <p class="text-[10px] text-on-surface-variant mt-0.5">{{ entry.chunk_count }} chunks · {{ entry.original_filename }}</p>
+                </div>
+                <button onclick="deletePolicy('{{ entry.entry_id }}')"
+                        class="p-1 rounded hover:bg-error/10 text-on-surface-variant hover:text-error transition-colors shrink-0 mt-0.5" title="Delete policy">
+                  <span class="material-symbols-outlined text-sm">delete</span>
+                </button>
+              </div>
+              {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-xs text-on-surface-variant/60 italic">No policies uploaded yet.</p>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-sm text-on-surface-variant">No products configured. Save a company profile first.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Policy Upload Modal -->
+    <div id="policy-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      <div class="bg-surface-container-lowest rounded-2xl shadow-2xl p-8 w-full max-w-lg mx-4">
+        <div class="flex items-center justify-between mb-6">
+          <h3 class="text-lg font-headline font-bold text-on-surface">Upload Policy Document</h3>
+          <button onclick="closePolicyModal()" class="p-1.5 rounded-lg hover:bg-surface-container-high text-on-surface-variant">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+
+        <div class="space-y-4">
+          <div>
+            <label class="text-[10px] uppercase tracking-widest font-bold text-on-surface-variant mb-1.5 block">Product</label>
+            <select id="modal-product"
+                    class="w-full rounded-lg bg-surface-container-low border border-outline-variant/30 px-4 py-2.5 text-sm text-on-surface focus:outline-none focus:border-primary">
+              {% for product_key, product_display in data.product_display_names.items() %}
+              <option value="{{ product_key }}">{{ product_display }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div>
+            <label class="text-[10px] uppercase tracking-widest font-bold text-on-surface-variant mb-1.5 block">Topic / Policy Type</label>
+            <select id="modal-topic"
+                    class="w-full rounded-lg bg-surface-container-low border border-outline-variant/30 px-4 py-2.5 text-sm text-on-surface focus:outline-none focus:border-primary">
+              {% for topic_key, topic_display in data.topic_display_names.items() %}
+              <option value="{{ topic_key }}">{{ topic_display }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div>
+            <label class="text-[10px] uppercase tracking-widest font-bold text-on-surface-variant mb-1.5 block">Policy Document (PDF, Image, or Text)</label>
+            <div class="border-2 border-dashed border-outline-variant rounded-xl p-6 flex flex-col items-center gap-2 cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors"
+                 onclick="document.getElementById('modal-file').click()">
+              <span class="material-symbols-outlined text-3xl text-on-surface-variant">cloud_upload</span>
+              <p class="text-sm text-on-surface-variant" id="modal-file-label">Click to choose file</p>
+              <input id="modal-file" type="file" accept=".pdf,.png,.jpg,.jpeg,.txt,.md" class="hidden"
+                     onchange="document.getElementById('modal-file-label').textContent = this.files[0]?.name || 'Click to choose file'">
+            </div>
+          </div>
+
+          <div id="modal-status" class="hidden text-sm rounded-lg px-4 py-3"></div>
+
+          <div class="flex items-center gap-3 pt-2">
+            <button onclick="submitPolicyUpload()"
+                    class="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg bg-primary text-on-primary text-sm font-semibold hover:opacity-90 transition-opacity">
+              <span class="material-symbols-outlined text-sm">upload_file</span>
+              Upload &amp; Index
+            </button>
+            <button onclick="closePolicyModal()"
+                    class="px-5 py-2.5 rounded-lg border border-outline-variant text-sm text-on-surface-variant hover:bg-surface-container-high">
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- ══════════════ 2. CLASSIFICATION TAXONOMY ══════════════ -->
@@ -234,8 +369,16 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           {% for cat in data.product_categories %}
           {% set sub_products = data.product_to_sub_product.get(cat.product_category, []) %}
+          {% set policy_count = data.policies_by_product.get(cat.product_category, []) | length %}
           <div class="bg-surface-container-low rounded-xl p-5 border-l-4 border-primary/40">
-            <div class="font-mono text-xs font-bold text-primary mb-1">{{ cat.product_category }}</div>
+            <div class="flex items-center justify-between gap-2 mb-1">
+              <div class="font-mono text-xs font-bold text-primary">{{ cat.product_category }}</div>
+              {% if policy_count > 0 %}
+              <span class="text-[9px] px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container font-bold shrink-0">
+                {{ policy_count }} {{ 'policy' if policy_count == 1 else 'policies' }}
+              </span>
+              {% endif %}
+            </div>
             <p class="text-xs text-on-surface/80 leading-relaxed mb-3">{{ cat.definition }}</p>
             <!-- Cues -->
             <div class="flex flex-wrap gap-1 mb-3">
@@ -317,7 +460,62 @@
     </div>
 
     <!-- ══════════════ 3. RISK TAXONOMY ══════════════ -->
-    <div id="panel-risk" class="tab-panel">
+    <div id="panel-risk" class="tab-panel space-y-6">
+
+      <!-- Uploaded Risk Policies -->
+      <div class="bg-surface-container-lowest rounded-xl p-8 shadow-sm">
+        <div class="flex items-center justify-between gap-4 mb-6">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-error-container rounded-lg flex items-center justify-center">
+              <span class="material-symbols-outlined text-error">policy</span>
+            </div>
+            <div>
+              <h2 class="text-xl font-headline font-bold text-on-surface">Risk Policies</h2>
+              <p class="text-xs text-on-surface-variant">Uploaded policies covering risk-related topics (fraud, account management, loan modification)</p>
+            </div>
+          </div>
+          <button onclick="openPolicyModal(null)"
+                  class="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-error/40 text-error text-sm font-semibold hover:bg-error/5 transition-colors shrink-0">
+            <span class="material-symbols-outlined text-sm">upload_file</span>
+            Upload Risk Policy
+          </button>
+        </div>
+        {% set has_risk_policies = namespace(found=false) %}
+        {% for product, entries in data.policies_by_product.items() %}
+          {% for e in entries if e.topic in data.risk_topics %}
+            {% set has_risk_policies.found = true %}
+          {% endfor %}
+        {% endfor %}
+        {% if has_risk_policies.found %}
+        <div class="space-y-3">
+          {% for product, entries in data.policies_by_product.items() %}
+            {% for e in entries if e.topic in data.risk_topics %}
+            <div class="flex items-start justify-between gap-3 bg-surface-container-low rounded-xl px-4 py-3 border-l-4 border-error/40">
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 flex-wrap mb-1">
+                  <span class="text-[10px] px-2 py-0.5 rounded-full bg-primary-fixed/50 text-on-primary-fixed-variant font-mono font-bold">{{ e.product_display }}</span>
+                  <span class="text-[10px] px-2 py-0.5 rounded-full bg-error/10 text-error font-semibold">{{ e.topic_display }}</span>
+                </div>
+                <p class="text-sm font-semibold text-on-surface">{{ e.title }}</p>
+                <p class="text-xs text-on-surface-variant mt-0.5">{{ e.chunk_count }} chunks · {{ e.original_filename }}</p>
+              </div>
+              <button onclick="deletePolicy('{{ e.entry_id }}')"
+                      class="p-1.5 rounded-lg hover:bg-error/10 text-on-surface-variant hover:text-error transition-colors shrink-0">
+                <span class="material-symbols-outlined text-sm">delete</span>
+              </button>
+            </div>
+            {% endfor %}
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center py-8">
+          <span class="material-symbols-outlined text-4xl text-on-surface-variant/30 block mb-2">folder_open</span>
+          <p class="text-sm text-on-surface-variant">No risk policies uploaded yet.</p>
+          <p class="text-xs text-on-surface-variant/60 mt-1">Upload policies covering fraud, account management, or loan modification topics.</p>
+        </div>
+        {% endif %}
+      </div>
+
       <div class="bg-surface-container-lowest rounded-xl p-8 shadow-sm">
         <div class="flex items-center gap-4 mb-6">
           <div class="w-10 h-10 bg-error-container rounded-lg flex items-center justify-center">
@@ -365,7 +563,62 @@
     </div>
 
     <!-- ══════════════ 4. COMPLIANCE TAXONOMY ══════════════ -->
-    <div id="panel-compliance" class="tab-panel">
+    <div id="panel-compliance" class="tab-panel space-y-6">
+
+      <!-- Uploaded Compliance Policies -->
+      <div class="bg-surface-container-lowest rounded-xl p-8 shadow-sm">
+        <div class="flex items-center justify-between gap-4 mb-6">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-secondary-container rounded-lg flex items-center justify-center">
+              <span class="material-symbols-outlined text-on-secondary-container">policy</span>
+            </div>
+            <div>
+              <h2 class="text-xl font-headline font-bold text-on-surface">Compliance Policies</h2>
+              <p class="text-xs text-on-surface-variant">Uploaded policies covering compliance topics (disclosures, communication, billing disputes)</p>
+            </div>
+          </div>
+          <button onclick="openPolicyModal(null)"
+                  class="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-secondary/40 text-on-secondary-container text-sm font-semibold hover:bg-secondary/5 transition-colors shrink-0">
+            <span class="material-symbols-outlined text-sm">upload_file</span>
+            Upload Compliance Policy
+          </button>
+        </div>
+        {% set has_compliance_policies = namespace(found=false) %}
+        {% for product, entries in data.policies_by_product.items() %}
+          {% for e in entries if e.topic in data.compliance_topics %}
+            {% set has_compliance_policies.found = true %}
+          {% endfor %}
+        {% endfor %}
+        {% if has_compliance_policies.found %}
+        <div class="space-y-3">
+          {% for product, entries in data.policies_by_product.items() %}
+            {% for e in entries if e.topic in data.compliance_topics %}
+            <div class="flex items-start justify-between gap-3 bg-surface-container-low rounded-xl px-4 py-3 border-l-4 border-secondary/40">
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 flex-wrap mb-1">
+                  <span class="text-[10px] px-2 py-0.5 rounded-full bg-primary-fixed/50 text-on-primary-fixed-variant font-mono font-bold">{{ e.product_display }}</span>
+                  <span class="text-[10px] px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container font-semibold">{{ e.topic_display }}</span>
+                </div>
+                <p class="text-sm font-semibold text-on-surface">{{ e.title }}</p>
+                <p class="text-xs text-on-surface-variant mt-0.5">{{ e.chunk_count }} chunks · {{ e.original_filename }}</p>
+              </div>
+              <button onclick="deletePolicy('{{ e.entry_id }}')"
+                      class="p-1.5 rounded-lg hover:bg-error/10 text-on-surface-variant hover:text-error transition-colors shrink-0">
+                <span class="material-symbols-outlined text-sm">delete</span>
+              </button>
+            </div>
+            {% endfor %}
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center py-8">
+          <span class="material-symbols-outlined text-4xl text-on-surface-variant/30 block mb-2">folder_open</span>
+          <p class="text-sm text-on-surface-variant">No compliance policies uploaded yet.</p>
+          <p class="text-xs text-on-surface-variant/60 mt-1">Upload policies covering disclosures, communication practices, or billing dispute procedures.</p>
+        </div>
+        {% endif %}
+      </div>
+
       <div class="bg-surface-container-lowest rounded-xl p-8 shadow-sm">
         <div class="flex items-center gap-4 mb-6">
           <div class="w-10 h-10 bg-secondary-container rounded-lg flex items-center justify-center">
@@ -537,6 +790,68 @@ function toggleEditPanel() {
   panel.classList.toggle('hidden');
   if (!panel.classList.contains('hidden')) {
     panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+}
+
+// ── Policy modal ──────────────────────────────────────────────────────────────
+function openPolicyModal(product) {
+  if (product) document.getElementById('modal-product').value = product;
+  document.getElementById('modal-status').classList.add('hidden');
+  document.getElementById('modal-file-label').textContent = 'Click to choose file';
+  document.getElementById('modal-file').value = '';
+  document.getElementById('policy-modal').classList.remove('hidden');
+}
+
+function closePolicyModal() {
+  document.getElementById('policy-modal').classList.add('hidden');
+}
+
+document.getElementById('policy-modal').addEventListener('click', function(e) {
+  if (e.target === this) closePolicyModal();
+});
+
+function showModalStatus(message, isError) {
+  const el = document.getElementById('modal-status');
+  el.textContent = message;
+  el.className = 'text-sm rounded-lg px-4 py-3 ' + (isError
+    ? 'bg-error/10 text-error'
+    : 'bg-secondary-container/40 text-on-secondary-container');
+  el.classList.remove('hidden');
+}
+
+async function submitPolicyUpload() {
+  const product = document.getElementById('modal-product').value;
+  const topic = document.getElementById('modal-topic').value;
+  const fileInput = document.getElementById('modal-file');
+  if (!fileInput.files[0]) { showModalStatus('Please select a file.', true); return; }
+
+  showModalStatus('Uploading and indexing…', false);
+
+  const form = new FormData();
+  form.append('product', product);
+  form.append('topic', topic);
+  form.append('file', fileInput.files[0]);
+
+  try {
+    const res = await fetch('/api/v1/policies/upload', { method: 'POST', body: form });
+    const data = await res.json();
+    if (!res.ok) { showModalStatus(data.detail || 'Upload failed.', true); return; }
+    showModalStatus(`Indexed ${data.chunk_count} chunks — reloading…`, false);
+    setTimeout(() => location.reload(), 800);
+  } catch (err) {
+    showModalStatus('Network error: ' + err.message, true);
+  }
+}
+
+async function deletePolicy(entryId) {
+  if (!confirm('Delete this policy and all its embeddings?')) return;
+  try {
+    const res = await fetch(`/api/v1/policies/${entryId}`, { method: 'DELETE' });
+    if (res.ok || res.status === 204) { location.reload(); return; }
+    const data = await res.json().catch(() => ({}));
+    alert(data.detail || 'Delete failed.');
+  } catch (err) {
+    alert('Network error: ' + err.message);
   }
 }
 

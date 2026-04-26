@@ -738,10 +738,24 @@ def build_settings_data() -> dict:
             deployment_label,
         )
         from app.knowledge.company_store import load_company_profile
+        from app.knowledge.policy_service import (
+            PRODUCT_DISPLAY_NAMES,
+            TOPIC_DISPLAY_NAMES,
+            RISK_TOPICS,
+            COMPLIANCE_TOPICS,
+            list_policies,
+        )
+
+        policies_by_product = list_policies()
 
         return {
             "deployment": deployment_label(),
             "company_profile": load_company_profile(),
+            "policies_by_product": policies_by_product,
+            "product_display_names": PRODUCT_DISPLAY_NAMES,
+            "topic_display_names": TOPIC_DISPLAY_NAMES,
+            "risk_topics": list(RISK_TOPICS),
+            "compliance_topics": list(COMPLIANCE_TOPICS),
             "product_categories": PRODUCT_CATEGORIES,
             "issue_types": ISSUE_TYPES,
             "product_to_sub_product": PRODUCT_TO_SUB_PRODUCT_TAXONOMY,
@@ -764,6 +778,11 @@ def build_settings_data() -> dict:
             "policy_snippets": [],
             "routing_rules": {},
             "root_cause_controls": [],
+            "policies_by_product": {},
+            "product_display_names": {},
+            "topic_display_names": {},
+            "risk_topics": [],
+            "compliance_topics": [],
         }
 
 
