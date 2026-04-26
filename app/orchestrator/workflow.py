@@ -15,6 +15,7 @@ from typing import Callable
 
 from opentelemetry.trace import Status, StatusCode
 
+from app.agents.adk_runner import reset_adk_session, set_adk_session
 from app.agents.classification import run_classification
 from app.agents.narrative_context import narrative_for_agent_prompt
 from app.agents.compliance import run_compliance_check
@@ -379,6 +380,7 @@ def process_complaint(payload: dict) -> WorkflowState:
     log_label = deployment_label()
     ar = ActiveRun(run_id=run_id, company_id=log_label)
     ctx_token = set_active_run(ar)
+    adk_ctx_token = set_adk_session("workflow", f"workflow-{run_id}")
     tracer = get_workflow_tracer()
     cost_acc = TokenCostAccumulator()
 
@@ -472,4 +474,5 @@ def process_complaint(payload: dict) -> WorkflowState:
         logger.info("Workflow complete – routed to %s", state.get("routed_to"))
         return state
     finally:
+        reset_adk_session(adk_ctx_token)
         reset_active_run(ctx_token)

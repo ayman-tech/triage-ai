@@ -15,8 +15,7 @@ from pathlib import Path
 from typing import Any, Dict, Tuple
 from uuid import uuid4
 
-from app.agents.llm_factory import default_model_name, get_gemini_client
-from app.agents.llm_json import parse_llm_json
+from app.agents.adk_runner import reset_adk_session, run_adk_json_agent, set_adk_session
 from app.db.models import IntakeSessionRecord
 from app.db.session import SessionLocal
 from app.knowledge.company_knowledge import CompanyKnowledgeService
@@ -476,11 +475,9 @@ def process_intake_message(session_id: str, user_message: str, model_name: str |
     state.last_user_message = sanitized_user_message
     state.conversation_history.append({"role": "user", "message": sanitized_user_message})
 
+    adk_ctx_token = set_adk_session("intake", f"intake-{session_id}")
     try:
         system_prompt = _build_intake_system_prompt()
-        client = get_gemini_client()
-        model = model_name or default_model_name()
-
         # Send a transcript window plus the structured packet so the model can
         # preserve user corrections and maintain continuity across turns.
         payload = {
@@ -490,20 +487,26 @@ def process_intake_message(session_id: str, user_message: str, model_name: str |
         }
         user_content = json.dumps(payload, ensure_ascii=False)
 
-        import google.genai as genai
-        from google.genai import types as genai_types
-
-        contents = [genai_types.Content(role="user", parts=[genai_types.Part(text=user_content)])]
-        config = genai_types.GenerateContentConfig(system_instruction=system_prompt)
-
         # Privacy default: do not emit intake turns to LangSmith unless explicitly enabled.
         if _trace_intake_to_langsmith_enabled():
-            response = client.models.generate_content(model=model, contents=contents, config=config)
+            data = run_adk_json_agent(
+                name="intake_agent",
+                description="Conversational complaint intake agent that gathers enough safe facts to open a case.",
+                instruction=system_prompt,
+                user_message=user_content,
+                tools=[],
+                model_name=model_name,
+            )
         else:
             with _temp_disable_langsmith_tracing():
-                response = client.models.generate_content(model=model, contents=contents, config=config)
-        raw = response.text
-        data = parse_llm_json(raw)
+                data = run_adk_json_agent(
+                    name="intake_agent",
+                    description="Conversational complaint intake agent that gathers enough safe facts to open a case.",
+                    instruction=system_prompt,
+                    user_message=user_content,
+                    tools=[],
+                    model_name=model_name,
+                )
 
         if set(data.keys()) != {"assistant_message", "intake_packet"}:
             raise ValueError("LLM response must contain exactly assistant_message and intake_packet.")
@@ -542,6 +545,8 @@ def process_intake_message(session_id: str, user_message: str, model_name: str |
             "I'm sorry, I couldn't process that cleanly. Please restate what happened, "
             "which financial product or service it relates to, and any date or amount if known."
         )
+    finally:
+        reset_adk_session(adk_ctx_token)
 
     state.conversation_history.append({"role": "assistant", "message": state.last_agent_message})
     _persist_session_state(state)
