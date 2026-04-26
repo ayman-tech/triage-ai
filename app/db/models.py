@@ -705,3 +705,14 @@ class ResolutionEmbedding(Base):
             postgresql_ops={"embedding": "vector_cosine_ops"},
         ),
     )
+
+
+class CompanyProfile(Base):
+    """Stores the dynamic company profile configuration, overriding the hardcoded defaults."""
+
+    __tablename__ = "company_profiles"
+
+    id = Column(String(32), primary_key=True, default=lambda: uuid.uuid4().hex)
+    company_id = Column(String(64), nullable=False, unique=True, default="mock_bank")
+    profile_json = Column(Text, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

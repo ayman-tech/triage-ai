@@ -64,14 +64,21 @@
     <div id="panel-profile" class="tab-panel active space-y-6">
       {% set p = data.company_profile %}
       <div class="bg-surface-container-lowest rounded-xl p-8 shadow-sm">
-        <div class="flex items-center gap-4 mb-6">
-          <div class="w-10 h-10 aurora-gradient rounded-lg flex items-center justify-center">
-            <span class="material-symbols-outlined text-white">business</span>
+        <div class="flex items-center justify-between gap-4 mb-6">
+          <div class="flex items-center gap-4">
+            <div class="w-10 h-10 aurora-gradient rounded-lg flex items-center justify-center">
+              <span class="material-symbols-outlined text-white">business</span>
+            </div>
+            <div>
+              <h2 class="text-xl font-headline font-bold text-on-surface">{{ p.get('display_name', 'Company') }}</h2>
+              <p class="text-xs text-on-surface-variant">{{ p.get('customer_identity', '') | title }}</p>
+            </div>
           </div>
-          <div>
-            <h2 class="text-xl font-headline font-bold text-on-surface">{{ p.get('display_name', 'Company') }}</h2>
-            <p class="text-xs text-on-surface-variant">{{ p.get('customer_identity', '') | title }}</p>
-          </div>
+          <button onclick="toggleEditPanel()"
+                  class="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-on-primary text-sm font-semibold hover:opacity-90 transition-opacity">
+            <span class="material-symbols-outlined text-sm">edit</span>
+            Edit Profile
+          </button>
         </div>
 
         <!-- Supported Products -->
@@ -122,6 +129,91 @@
             </ul>
         </div>
         {% endif %}
+      </div>
+
+      <!-- ── Edit / Upload Panel (hidden by default) ─────────────────── -->
+      <div id="edit-profile-panel" class="hidden bg-surface-container-lowest rounded-xl p-8 shadow-sm space-y-6">
+
+        <div class="flex items-center gap-3 mb-2">
+          <span class="material-symbols-outlined text-primary">upload_file</span>
+          <h3 class="text-base font-headline font-bold text-on-surface">Upload Company Document</h3>
+        </div>
+        <p class="text-xs text-on-surface-variant -mt-4">Upload a PDF or image containing your company information. Gemini will extract the profile fields automatically.</p>
+
+        <div id="upload-drop-zone"
+             class="border-2 border-dashed border-outline-variant rounded-xl p-8 flex flex-col items-center gap-3 cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors"
+             onclick="document.getElementById('profile-file-input').click()"
+             ondragover="event.preventDefault(); this.classList.add('border-primary','bg-primary/5')"
+             ondragleave="this.classList.remove('border-primary','bg-primary/5')"
+             ondrop="handleFileDrop(event)">
+          <span class="material-symbols-outlined text-4xl text-on-surface-variant">cloud_upload</span>
+          <p class="text-sm text-on-surface-variant">Drag &amp; drop a PDF or image here, or click to browse</p>
+          <input id="profile-file-input" type="file" accept=".pdf,.png,.jpg,.jpeg,.tiff,.bmp,.webp" class="hidden" onchange="uploadProfileFile(this.files[0])">
+        </div>
+
+        <div id="upload-status" class="hidden text-sm rounded-lg px-4 py-3"></div>
+
+        <hr class="border-outline-variant/20">
+
+        <div class="flex items-center gap-3 mb-2">
+          <span class="material-symbols-outlined text-primary">edit_note</span>
+          <h3 class="text-base font-headline font-bold text-on-surface">Edit Profile Manually</h3>
+        </div>
+
+        <form id="edit-profile-form" class="space-y-5" onsubmit="submitProfileForm(event)">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div>
+              <label class="text-[10px] uppercase tracking-widest font-bold text-on-surface-variant mb-1.5 block">Company Name</label>
+              <input type="text" name="display_name" value="{{ p.get('display_name', '') }}"
+                     class="w-full rounded-lg bg-surface-container-low border border-outline-variant/30 px-4 py-2.5 text-sm text-on-surface focus:outline-none focus:border-primary transition-colors">
+            </div>
+            <div>
+              <label class="text-[10px] uppercase tracking-widest font-bold text-on-surface-variant mb-1.5 block">Customer Identity</label>
+              <input type="text" name="customer_identity" value="{{ p.get('customer_identity', '') }}"
+                     placeholder="e.g. digital bank"
+                     class="w-full rounded-lg bg-surface-container-low border border-outline-variant/30 px-4 py-2.5 text-sm text-on-surface focus:outline-none focus:border-primary transition-colors">
+            </div>
+          </div>
+
+          <div>
+            <label class="text-[10px] uppercase tracking-widest font-bold text-on-surface-variant mb-1.5 block">Supported Products <span class="normal-case font-normal">(comma-separated)</span></label>
+            <input type="text" name="supported_products" value="{{ p.get('supported_products', []) | join(', ') }}"
+                   placeholder="checking accounts, savings accounts, credit cards"
+                   class="w-full rounded-lg bg-surface-container-low border border-outline-variant/30 px-4 py-2.5 text-sm text-on-surface focus:outline-none focus:border-primary transition-colors">
+          </div>
+
+          <div>
+            <label class="text-[10px] uppercase tracking-widest font-bold text-on-surface-variant mb-1.5 block">Intake Operator Style</label>
+            <textarea name="intake_operator_style" rows="3"
+                      class="w-full rounded-lg bg-surface-container-low border border-outline-variant/30 px-4 py-2.5 text-sm text-on-surface focus:outline-none focus:border-primary transition-colors resize-y">{{ p.get('intake_operator_style', '') }}</textarea>
+          </div>
+
+          <div>
+            <label class="text-[10px] uppercase tracking-widest font-bold text-on-surface-variant mb-1.5 block">Intake Routing Guidance <span class="normal-case font-normal">(one item per line)</span></label>
+            <textarea name="intake_routing_guidance" rows="4"
+                      class="w-full rounded-lg bg-surface-container-low border border-outline-variant/30 px-4 py-2.5 text-sm text-on-surface focus:outline-none focus:border-primary transition-colors resize-y">{{ p.get('intake_routing_guidance', []) | join('\n') }}</textarea>
+          </div>
+
+          <div>
+            <label class="text-[10px] uppercase tracking-widest font-bold text-on-surface-variant mb-1.5 block">Safe Reference Guidance</label>
+            <textarea name="safe_reference_guidance" rows="2"
+                      class="w-full rounded-lg bg-surface-container-low border border-outline-variant/30 px-4 py-2.5 text-sm text-on-surface focus:outline-none focus:border-primary transition-colors resize-y">{{ p.get('safe_reference_guidance', '') }}</textarea>
+          </div>
+
+          <div id="form-status" class="hidden text-sm rounded-lg px-4 py-3"></div>
+
+          <div class="flex items-center gap-3">
+            <button type="submit"
+                    class="flex items-center gap-1.5 px-5 py-2.5 rounded-lg bg-primary text-on-primary text-sm font-semibold hover:opacity-90 transition-opacity">
+              <span class="material-symbols-outlined text-sm">save</span>
+              Save Profile
+            </button>
+            <button type="button" onclick="toggleEditPanel()"
+                    class="px-5 py-2.5 rounded-lg border border-outline-variant text-sm text-on-surface-variant hover:bg-surface-container-high transition-colors">
+              Cancel
+            </button>
+          </div>
+        </form>
       </div>
     </div>
 
@@ -438,6 +530,84 @@ function switchTab(id) {
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   document.getElementById('tab-btn-' + id).classList.add('active');
   document.getElementById('panel-' + id).classList.add('active');
+}
+
+function toggleEditPanel() {
+  const panel = document.getElementById('edit-profile-panel');
+  panel.classList.toggle('hidden');
+  if (!panel.classList.contains('hidden')) {
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+}
+
+function showStatus(elId, message, isError) {
+  const el = document.getElementById(elId);
+  el.textContent = message;
+  el.className = 'text-sm rounded-lg px-4 py-3 ' + (isError
+    ? 'bg-error/10 text-error'
+    : 'bg-secondary-container/40 text-on-secondary-container');
+  el.classList.remove('hidden');
+}
+
+function handleFileDrop(event) {
+  event.preventDefault();
+  document.getElementById('upload-drop-zone').classList.remove('border-primary', 'bg-primary/5');
+  const file = event.dataTransfer.files[0];
+  if (file) uploadProfileFile(file);
+}
+
+async function uploadProfileFile(file) {
+  if (!file) return;
+  const statusEl = 'upload-status';
+  showStatus(statusEl, 'Extracting profile from document…', false);
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  try {
+    const res = await fetch('/api/v1/company/profile/upload', { method: 'POST', body: formData });
+    const data = await res.json();
+    if (!res.ok) {
+      showStatus(statusEl, data.detail || 'Upload failed.', true);
+      return;
+    }
+    showStatus(statusEl, 'Profile extracted successfully — reloading…', false);
+    setTimeout(() => location.reload(), 800);
+  } catch (err) {
+    showStatus(statusEl, 'Network error: ' + err.message, true);
+  }
+}
+
+async function submitProfileForm(event) {
+  event.preventDefault();
+  const form = event.target;
+  const statusEl = 'form-status';
+
+  const body = {
+    display_name: form.display_name.value.trim(),
+    customer_identity: form.customer_identity.value.trim(),
+    supported_products: form.supported_products.value.split(',').map(s => s.trim()).filter(Boolean),
+    intake_operator_style: form.intake_operator_style.value.trim(),
+    intake_routing_guidance: form.intake_routing_guidance.value.split('\n').map(s => s.trim()).filter(Boolean),
+    safe_reference_guidance: form.safe_reference_guidance.value.trim(),
+  };
+
+  try {
+    const res = await fetch('/api/v1/company/profile', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      showStatus(statusEl, data.detail || 'Save failed.', true);
+      return;
+    }
+    showStatus(statusEl, 'Profile saved — reloading…', false);
+    setTimeout(() => location.reload(), 600);
+  } catch (err) {
+    showStatus(statusEl, 'Network error: ' + err.message, true);
+  }
 }
 </script>
 {% endblock %}

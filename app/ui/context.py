@@ -727,7 +727,6 @@ def build_settings_data() -> dict:
     """Load knowledge pack content for the settings view."""
     try:
         from app.knowledge.mock_company_pack import (
-            COMPANY_PROFILE,
             PRODUCT_CATEGORIES,
             ISSUE_TYPES,
             PRODUCT_TO_SUB_PRODUCT_TAXONOMY,
@@ -738,10 +737,11 @@ def build_settings_data() -> dict:
             ROOT_CAUSE_CONTROLS,
             deployment_label,
         )
+        from app.knowledge.company_store import load_company_profile
 
         return {
             "deployment": deployment_label(),
-            "company_profile": COMPANY_PROFILE,
+            "company_profile": load_company_profile(),
             "product_categories": PRODUCT_CATEGORIES,
             "issue_types": ISSUE_TYPES,
             "product_to_sub_product": PRODUCT_TO_SUB_PRODUCT_TAXONOMY,
