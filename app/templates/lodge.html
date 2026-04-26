@@ -24,6 +24,18 @@
   .intake-summary-card {
     box-shadow: 0 4px 20px rgba(27, 28, 26, 0.06), 0 8px 40px rgba(27, 28, 26, 0.04);
   }
+
+  /* Ambient voice circle */
+  #voice-circle-outer { width: 220px; height: 220px; }
+  #voice-circle-mid   { width: 160px; height: 160px; }
+  #voice-circle-inner { width:  80px; height:  80px; }
+
+  @keyframes voice-idle-pulse {
+    0%, 100% { transform: scale(1);    opacity: 0.6; }
+    50%       { transform: scale(1.08); opacity: 1;   }
+  }
+  .voice-idle #voice-circle-outer { animation: voice-idle-pulse 2s ease-in-out infinite; }
+  .voice-idle #voice-circle-mid   { animation: voice-idle-pulse 2s ease-in-out infinite 0.3s; }
 </style>
 {% endblock %}
 
@@ -82,6 +94,15 @@
     <!-- Error message -->
     <div id="chat-error"
          class="hidden mx-8 mb-3 rounded-xl bg-error-container/70 px-4 py-3 text-sm text-on-error-container">
+    </div>
+
+    <!-- Ambient voice circle overlay (shown while mic is listening) -->
+    <div id="voice-circle-overlay" class="hidden pointer-events-none fixed inset-0 z-50 flex items-center justify-center">
+      <div id="voice-circle-outer" class="absolute rounded-full bg-secondary/10 transition-transform duration-75"></div>
+      <div id="voice-circle-mid"   class="absolute rounded-full bg-secondary/20 transition-transform duration-75"></div>
+      <div id="voice-circle-inner" class="absolute rounded-full bg-secondary/30 flex items-center justify-center shadow-lg">
+        <span class="material-symbols-outlined text-secondary text-3xl" style="font-variation-settings:'FILL' 1;">mic</span>
+      </div>
     </div>
 
     <!-- Success modal after complaint is registered (stays on lodge; chat resets) -->
@@ -380,6 +401,7 @@
       micListening = false;
       speechStatusEl.textContent = '';
       speechStatusBar.classList.add('hidden');
+      stopAudioVisualizer();
     };
 
     const scheduleNextListen = () => {
@@ -413,13 +435,15 @@
         speechStatusEl.textContent = 'Listening… pause when you finish your sentence to send.';
         speechStatusBar.classList.remove('hidden');
         syncMicAvailability();
+        startAudioVisualizer();
       });
-      recognition.addEventListener('end', () => { micListening = false; void handleUtteranceEnd(); });
+      recognition.addEventListener('end', () => { micListening = false; stopAudioVisualizer(); void handleUtteranceEnd(); });
       recognition.addEventListener('error', (ev) => {
         if (ev.error === 'aborted') return;
         micListening = false;
         speechStatusEl.textContent = '';
         speechStatusBar.classList.add('hidden');
+        stopAudioVisualizer();
         if (ev.error === 'no-speech') { scheduleNextListen(); return; }
         if (ev.error === 'not-allowed') { voiceLoopActive = false; setError('Microphone permission denied.'); }
         else if (ev.error === 'not-supported') { voiceLoopActive = false; setError('Speech recognition needs HTTPS or localhost.'); }
@@ -437,6 +461,64 @@
         speechStatusEl.textContent = live ? 'Hearing: ' + live : 'Listening… pause when you finish your sentence to send.';
       });
     }
+
+    // ── Audio visualizer (Web Audio API) ──────────────────────────────────
+    let audioCtx = null;
+    let audioAnalyser = null;
+    let audioStream = null;
+    let audioRafId = null;
+
+    const startAudioVisualizer = async () => {
+      if (audioStream) return; // already running
+      try {
+        audioStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const source = audioCtx.createMediaStreamSource(audioStream);
+        audioAnalyser = audioCtx.createAnalyser();
+        audioAnalyser.fftSize = 256;
+        audioAnalyser.smoothingTimeConstant = 0.8;
+        source.connect(audioAnalyser);
+        driveVoiceCircle();
+      } catch (e) {
+        console.warn('Audio visualizer unavailable', e);
+      }
+    };
+
+    const stopAudioVisualizer = () => {
+      if (audioRafId) { cancelAnimationFrame(audioRafId); audioRafId = null; }
+      if (audioStream) { audioStream.getTracks().forEach(t => t.stop()); audioStream = null; }
+      if (audioCtx) { audioCtx.close().catch(() => {}); audioCtx = null; }
+      audioAnalyser = null;
+      const overlay = document.getElementById('voice-circle-overlay');
+      overlay.classList.add('hidden');
+      overlay.classList.remove('voice-idle');
+    };
+
+    const driveVoiceCircle = () => {
+      const overlay = document.getElementById('voice-circle-overlay');
+      const outer   = document.getElementById('voice-circle-outer');
+      const mid     = document.getElementById('voice-circle-mid');
+      overlay.classList.remove('hidden');
+
+      const data = new Uint8Array(audioAnalyser.frequencyBinCount);
+      const tick = () => {
+        if (!audioAnalyser) return;
+        audioAnalyser.getByteFrequencyData(data);
+        const rms = Math.sqrt(data.reduce((s, v) => s + v * v, 0) / data.length) / 128;
+        const speaking = rms > 0.05;
+        overlay.classList.toggle('voice-idle', !speaking);
+        if (speaking) {
+          outer.style.transform = `scale(${(1 + Math.min(rms * 1.5, 0.8)).toFixed(3)})`;
+          mid.style.transform   = `scale(${(1 + Math.min(rms * 1.0, 0.5)).toFixed(3)})`;
+        } else {
+          outer.style.transform = '';
+          mid.style.transform   = '';
+        }
+        audioRafId = requestAnimationFrame(tick);
+      };
+      tick();
+    };
+    // ─────────────────────────────────────────────────────────────────────
 
     const handleUtteranceEnd = async () => {
       if (utteranceProcessing) return;
