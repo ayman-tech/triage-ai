@@ -262,11 +262,16 @@ class KnowledgeEntry(Base):
     collection_id = Column(String(32), ForeignKey("knowledge_collections.id"), nullable=False, index=True)
     title = Column(String(200), nullable=False)
     content = Column(Text, nullable=False)
+    product = Column(String(64), nullable=True, index=True)
+    topic = Column(String(64), nullable=True, index=True)
+    original_filename = Column(String(255), nullable=True)
+    storage_uri = Column(Text, nullable=True)
     metadata_json = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     collection = relationship("KnowledgeCollection", back_populates="entries")
+    policy_embeddings = relationship("PolicyEmbedding", back_populates="entry", cascade="all, delete-orphan")
 
 
 class EvaluationDataset(Base):
@@ -704,4 +709,60 @@ class ResolutionEmbedding(Base):
             postgresql_with={"m": 16, "ef_construction": 64},
             postgresql_ops={"embedding": "vector_cosine_ops"},
         ),
+    )
+
+
+class PolicyEmbedding(Base):
+    """Vector chunks for company policy documents, indexed by product and topic."""
+
+    __tablename__ = "policy_embeddings"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    company_id = Column(String(64), nullable=False, index=True, default="mock_bank")
+    entry_id = Column(String(32), ForeignKey("knowledge_entries.id", ondelete="CASCADE"), nullable=False, index=True)
+    product = Column(String(64), nullable=False, index=True)
+    topic = Column(String(64), nullable=False, index=True)
+    chunk_index = Column(Integer, default=0)
+    content = Column(Text)
+    embedding = Column(Vector(EMBEDDING_DIM))
+    source_page = Column(Integer, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    entry = relationship("KnowledgeEntry", back_populates="policy_embeddings")
+
+    __table_args__ = (
+        Index(
+            "ix_policy_embeddings_hnsw",
+            embedding,
+            postgresql_using="hnsw",
+            postgresql_with={"m": 16, "ef_construction": 64},
+            postgresql_ops={"embedding": "vector_cosine_ops"},
+        ),
+    )
+
+
+class CompanyProfile(Base):
+    """Stores the dynamic company profile configuration, overriding the hardcoded defaults."""
+
+    __tablename__ = "company_profiles"
+
+    id = Column(String(32), primary_key=True, default=lambda: uuid.uuid4().hex)
+    company_id = Column(String(64), nullable=False, unique=True, default="mock_bank")
+    profile_json = Column(Text, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class CompanyTaxonomy(Base):
+    """Stores per-company taxonomy overrides (product_categories, issue_types, etc.)."""
+
+    __tablename__ = "company_taxonomies"
+
+    id = Column(String(32), primary_key=True, default=lambda: uuid.uuid4().hex)
+    company_id = Column(String(64), nullable=False, index=True, default="mock_bank")
+    taxonomy_type = Column(String(64), nullable=False)
+    taxonomy_json = Column(Text, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        Index("ix_company_taxonomies_company_type", "company_id", "taxonomy_type", unique=True),
     )

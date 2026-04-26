@@ -726,29 +726,38 @@ def build_settings_data() -> dict:
     """Load knowledge pack content for the settings view."""
     try:
         from app.knowledge.mock_company_pack import (
-            COMPANY_PROFILE,
-            PRODUCT_CATEGORIES,
-            ISSUE_TYPES,
             PRODUCT_TO_SUB_PRODUCT_TAXONOMY,
             ISSUE_TO_SUB_ISSUE_TAXONOMY,
-            SEVERITY_RUBRIC,
-            POLICY_SNIPPETS,
-            ROUTING_MATRIX,
-            ROOT_CAUSE_CONTROLS,
             deployment_label,
         )
+        from app.knowledge.company_store import load_company_profile
+        from app.knowledge.taxonomy_store import load_taxonomy
+        from app.knowledge.policy_service import (
+            PRODUCT_DISPLAY_NAMES,
+            TOPIC_DISPLAY_NAMES,
+            RISK_TOPICS,
+            COMPLIANCE_TOPICS,
+            list_policies,
+        )
+
+        policies_by_product = list_policies()
 
         return {
             "deployment": deployment_label(),
-            "company_profile": COMPANY_PROFILE,
-            "product_categories": PRODUCT_CATEGORIES,
-            "issue_types": ISSUE_TYPES,
+            "company_profile": load_company_profile(),
+            "policies_by_product": policies_by_product,
+            "product_display_names": PRODUCT_DISPLAY_NAMES,
+            "topic_display_names": TOPIC_DISPLAY_NAMES,
+            "risk_topics": list(RISK_TOPICS),
+            "compliance_topics": list(COMPLIANCE_TOPICS),
+            "product_categories": load_taxonomy("product_categories"),
+            "issue_types": load_taxonomy("issue_types"),
             "product_to_sub_product": PRODUCT_TO_SUB_PRODUCT_TAXONOMY,
             "issue_to_sub_issue": ISSUE_TO_SUB_ISSUE_TAXONOMY,
-            "severity_rubric": SEVERITY_RUBRIC,
-            "policy_snippets": POLICY_SNIPPETS,
-            "routing_rules": ROUTING_MATRIX,
-            "root_cause_controls": ROOT_CAUSE_CONTROLS,
+            "severity_rubric": load_taxonomy("severity_rubric"),
+            "policy_snippets": load_taxonomy("policy_snippets"),
+            "routing_rules": load_taxonomy("routing_matrix"),
+            "root_cause_controls": load_taxonomy("root_cause_controls"),
         }
     except Exception as e:
         logger.warning("Could not load company knowledge: %s", e)
@@ -763,6 +772,11 @@ def build_settings_data() -> dict:
             "policy_snippets": [],
             "routing_rules": {},
             "root_cause_controls": [],
+            "policies_by_product": {},
+            "product_display_names": {},
+            "topic_display_names": {},
+            "risk_topics": [],
+            "compliance_topics": [],
         }
 
 

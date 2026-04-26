@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c ' *)",
+      "Bash(pip show *)",
+      "Bash(python -c \"import reportlab\")",
+      "Bash(python -c \"import fpdf\")",
+      "Bash(python3 -c \"import sys; print\\(sys.executable\\)\")",
+      "Bash(pip3 install *)",
+      "Bash(.venv/bin/pip install *)",
+      "Bash(.venv/bin/python3 -m ensurepip --upgrade)",
+      "Bash(.venv/bin/python3 -m pip install reportlab --quiet)",
+      "Bash(.venv/bin/python3 -)",
+      "Bash(.venv/bin/python -c ' *)"
+    ]
+  }
+}
