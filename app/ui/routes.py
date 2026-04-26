@@ -172,9 +172,11 @@ def _build_user_session_history_context(
 
 
 def _post_login_redirect_url(role: str) -> str:
-    """End-users land on profile first; admins and team use the app shell home."""
+    """End-users land on profile first; admins use the app shell home; team goes to their queue."""
     if role == "user":
         return "/profile"
+    if role == "team":
+        return "/queue"
     return "/app"
 
 
@@ -310,6 +312,9 @@ async def app_home(request: Request, page: int = 1, limit: int = 15, range: str 
                 limit=limit,
             )
             return templates.TemplateResponse(request, "chat_history.html", context=context)
+
+        if user["role"] == "team":
+            return RedirectResponse(url="/queue", status_code=status.HTTP_302_FOUND)
 
         query = db.query(ComplaintCase).order_by(ComplaintCase.created_at.desc())
         if user["role"] == "team":
