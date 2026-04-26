@@ -11,14 +11,31 @@ from __future__ import annotations
 import os
 import json
 import logging
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Tuple
 from uuid import uuid4
 
 from app.agents.adk_runner import reset_adk_session, run_adk_json_agent, set_adk_session
-from app.db.models import IntakeSessionRecord
+from app.db.models import IntakeSessionRecord, WorkflowRun
 from app.db.session import SessionLocal
 from app.knowledge.company_knowledge import CompanyKnowledgeService
+from app.knowledge.mock_company_pack import deployment_label
+from app.observability.context import (
+    ActiveRun,
+    ActiveStep,
+    get_active_run,
+    reset_active_run,
+    reset_active_step,
+    set_active_run,
+    set_active_step,
+)
+from app.observability.persistence import (
+    finalize_workflow_run,
+    insert_workflow_run,
+    insert_workflow_step,
+    update_workflow_run_case_id,
+)
 from app.schemas.case import CaseCreate
 from app.schemas.intake import (
     InformationSufficiency,
@@ -62,6 +79,39 @@ def _truthy_env(name: str) -> bool:
 def _trace_intake_to_langsmith_enabled() -> bool:
     """Opt-in only: do not send raw intake chat history by default."""
     return _truthy_env("TRACE_INTAKE_TO_LANGSMITH")
+
+
+def _intake_run_id(session_id: str) -> str:
+    return f"intake-{session_id}"
+
+
+def _ensure_intake_tracking_run(session_id: str) -> str:
+    run_id = _intake_run_id(session_id)
+    try:
+        session = SessionLocal()
+        try:
+            exists = session.get(WorkflowRun, run_id) is not None
+        finally:
+            session.close()
+        if not exists:
+            insert_workflow_run(run_id, trace_id=None)
+    except Exception:
+        insert_workflow_run(run_id, trace_id=None)
+    return run_id
+
+
+def link_intake_costs_to_case(session_id: str, case_id: str) -> None:
+    """Attach intake chat LLM costs to the complaint after case creation."""
+    run_id = _intake_run_id(session_id)
+    update_workflow_run_case_id(run_id, case_id)
+    finalize_workflow_run(
+        run_id,
+        run_status="intake_completed",
+        final_route=None,
+        final_severity=None,
+        manual_review_required=False,
+        retry_count_total=0,
+    )
 
 
 class _temp_disable_langsmith_tracing:
@@ -475,7 +525,28 @@ def process_intake_message(session_id: str, user_message: str, model_name: str |
     state.last_user_message = sanitized_user_message
     state.conversation_history.append({"role": "user", "message": sanitized_user_message})
 
+    run_id = _ensure_intake_tracking_run(session_id)
+    active_run_already_set = get_active_run() is not None
+    run_ctx_token = None
+    if not active_run_already_set:
+        run_ctx_token = set_active_run(
+            ActiveRun(
+                run_id=run_id,
+                company_id=deployment_label(),
+            )
+        )
+    step_ctx_token = set_active_step(
+        ActiveStep(
+            node_name="intake_chat",
+            sequence_number=state.turn_index,
+            retry_number=0,
+        )
+    )
     adk_ctx_token = set_adk_session("intake", f"intake-{session_id}")
+    started_at = datetime.utcnow()
+    status = "success"
+    error_type = None
+    error_message = None
     try:
         system_prompt = _build_intake_system_prompt()
         # Send a transcript window plus the structured packet so the model can
@@ -536,6 +607,9 @@ def process_intake_message(session_id: str, user_message: str, model_name: str |
         else:
             state.last_agent_message = assistant_message
     except Exception:
+        status = "failure"
+        error_type = "IntakeTurnProcessingError"
+        error_message = "Intake turn processing failed; safe fallback returned."
         logger.exception("Intake turn processing failed; returning safe fallback")
         state.packet = _infer_currency_from_amount_packet(state.packet)
         state.packet = _compute_sufficiency(state.packet)
@@ -546,7 +620,37 @@ def process_intake_message(session_id: str, user_message: str, model_name: str |
             "which financial product or service it relates to, and any date or amount if known."
         )
     finally:
+        ended_at = datetime.utcnow()
+        latency_ms = max((ended_at - started_at).total_seconds() * 1000.0, 0.0)
+        insert_workflow_step(
+            run_id=run_id,
+            node_name="intake_chat",
+            sequence_number=state.turn_index,
+            started_at=started_at,
+            ended_at=ended_at,
+            latency_ms=latency_ms,
+            status=status,
+            retry_number=0,
+            model_name=model_name,
+            input_snapshot_json=None,
+            output_snapshot_json=None,
+            state_diff_json=None,
+            confidence=None,
+            error_type=error_type,
+            error_message=error_message,
+        )
+        finalize_workflow_run(
+            run_id,
+            run_status="intake_active",
+            final_route=None,
+            final_severity=None,
+            manual_review_required=False,
+            retry_count_total=0,
+        )
         reset_adk_session(adk_ctx_token)
+        reset_active_step(step_ctx_token)
+        if run_ctx_token is not None:
+            reset_active_run(run_ctx_token)
 
     state.conversation_history.append({"role": "assistant", "message": state.last_agent_message})
     _persist_session_state(state)

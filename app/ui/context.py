@@ -440,32 +440,31 @@ def build_case_detail(db_case: ComplaintCase, db: Session | None = None) -> dict
             .first()
         )
         run_snapshot = _run_cost_snapshot_with_ledger(latest_run, db)
-        if latest_run is not None:
-            agent_rows = (
-                db.query(
-                    LLMCallCost.agent_name,
-                    func.count(LLMCallCost.id),
-                    func.coalesce(func.sum(LLMCallCost.total_cost_usd), 0.0),
-                    func.coalesce(func.sum(LLMCallCost.total_tokens), 0),
-                )
-                .filter(
-                    LLMCallCost.run_id == latest_run.run_id,
-                    LLMCallCost.agent_name.isnot(None),
-                )
-                .group_by(LLMCallCost.agent_name)
-                .order_by(func.sum(LLMCallCost.total_cost_usd).desc())
-                .all()
+        agent_rows = (
+            db.query(
+                LLMCallCost.agent_name,
+                func.count(LLMCallCost.id),
+                func.coalesce(func.sum(LLMCallCost.total_cost_usd), 0.0),
+                func.coalesce(func.sum(LLMCallCost.total_tokens), 0),
             )
-            run_total_cost = float(run_snapshot["cost_estimate_total"] or 0.0)
-            for agent_name, call_count, total_cost, total_tokens in agent_rows:
-                share_pct = ((float(total_cost) / run_total_cost) * 100.0) if run_total_cost else 0.0
-                agent_costs.append({
-                    "agent_name": agent_name,
-                    "call_count": int(call_count or 0),
-                    "total_cost_usd": round(float(total_cost or 0.0), 4),
-                    "total_tokens": int(total_tokens or 0),
-                    "share_pct": round(share_pct, 1),
-                })
+            .filter(
+                LLMCallCost.case_id == db_case.id,
+                LLMCallCost.agent_name.isnot(None),
+            )
+            .group_by(LLMCallCost.agent_name)
+            .order_by(func.sum(LLMCallCost.total_cost_usd).desc())
+            .all()
+        )
+        case_total_cost = float(cost_snapshot["cost_estimate_usd"] or 0.0)
+        for agent_name, call_count, total_cost, total_tokens in agent_rows:
+            share_pct = ((float(total_cost) / case_total_cost) * 100.0) if case_total_cost else 0.0
+            agent_costs.append({
+                "agent_name": agent_name,
+                "call_count": int(call_count or 0),
+                "total_cost_usd": round(float(total_cost or 0.0), 4),
+                "total_tokens": int(total_tokens or 0),
+                "share_pct": round(share_pct, 1),
+            })
     return {
         "id": db_case.id,
         "public_case_id": getattr(db_case, "public_case_id", None) or db_case.id[:12].upper(),

@@ -276,10 +276,16 @@ def _update_case_cost(
         case = session.get(ComplaintCase, case_id)
         if not case:
             return
-        if token_total is not None:
-            case.token_total = token_total
-        if cost_estimate_usd is not None:
-            case.cost_estimate_usd = cost_estimate_usd
+        ledger_totals = (
+            session.query(
+                func.coalesce(func.sum(LLMCallCost.total_tokens), 0),
+                func.coalesce(func.sum(LLMCallCost.total_cost_usd), 0.0),
+            )
+            .filter(LLMCallCost.case_id == case_id)
+            .one()
+        )
+        case.token_total = int(ledger_totals[0] or token_total or 0)
+        case.cost_estimate_usd = float(ledger_totals[1] or cost_estimate_usd or 0.0)
         session.commit()
     except SQLAlchemyError as e:
         logger.warning("complaint_cases cost update skipped (case=%s): %s", case_id, e)

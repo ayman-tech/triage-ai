@@ -13,12 +13,14 @@ import threading
 import uuid
 from collections.abc import Callable
 from contextvars import ContextVar, Token
+from datetime import datetime
 from typing import Any
 
 from google.genai import types as genai_types
 
 from app.agents.llm_factory import candidate_model_names, default_model_name
 from app.agents.llm_json import parse_llm_json
+from app.observability.cost import record_gemini_call
 from app.observability.context import get_active_run
 
 logger = logging.getLogger(__name__)
@@ -242,6 +244,7 @@ async def _run_async(agent: Any, user_message: str) -> tuple[str, set[str]]:
         session_id=session.id,
         new_message=new_message,
     ):
+        _record_adk_event_usage(event, agent)
         content = getattr(event, "content", None)
         if content:
             for part in getattr(content, "parts", []) or []:
@@ -258,3 +261,28 @@ async def _run_async(agent: Any, user_message: str) -> tuple[str, set[str]]:
         logger.warning("ADK agent '%s' returned empty final response", agent.name)
 
     return final_text, tool_calls
+
+
+def _record_adk_event_usage(event: Any, agent: Any) -> None:
+    """Persist token usage from ADK events when an active run is available."""
+    usage = getattr(event, "usage_metadata", None)
+    if usage is None:
+        return
+
+    prompt_tokens = int(getattr(usage, "prompt_token_count", 0) or 0)
+    completion_tokens = int(getattr(usage, "candidates_token_count", 0) or 0)
+    total_tokens = int(getattr(usage, "total_token_count", 0) or 0)
+    if prompt_tokens + completion_tokens + total_tokens <= 0:
+        return
+
+    now = datetime.utcnow()
+    model_name = getattr(event, "model_version", None) or getattr(agent, "model", None)
+    try:
+        record_gemini_call(
+            response=event,
+            model_name=str(model_name or default_model_name()),
+            started_at=now,
+            ended_at=now,
+        )
+    except Exception:
+        logger.debug("ADK cost recording skipped", exc_info=True)

@@ -35,6 +35,7 @@ from app.utils.case_ids import ensure_case_public_id, resolve_case_record
 from app.agents.intake_engine import (
     finalize_intake_session,
     get_intake_session,
+    link_intake_costs_to_case,
     process_intake_message,
     start_intake_session,
 )
@@ -692,6 +693,7 @@ async def finalize_intake(
             case.review_notes = f"{len(linked_docs)} uploaded document(s) attached. Backend processing in progress."
             _upsert_case_and_outputs(case)
         _attach_intake_transcript_to_case(case.id, session_id)
+        link_intake_costs_to_case(session_id, case.id)
         background_tasks.add_task(
             _process_case_background,
             case_id=case.id,
