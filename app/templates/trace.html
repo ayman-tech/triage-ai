@@ -1,0 +1,1075 @@
+{% extends "base.html" %}
+{% block title %}Supervisor Trace{% endblock %}
+
+{% block head %}
+<style>
+/* ── Cards ── */
+.trace-card {
+  background: #ffffff;
+  border: 1px solid rgba(0,6,102,0.08);
+  box-shadow: 0 2px 12px rgba(0,6,102,0.05);
+  transition: box-shadow 0.2s, border-color 0.2s, transform 0.15s;
+  cursor: pointer;
+}
+.dark .trace-card { background: #181828; border-color: rgba(189,194,255,0.1); box-shadow: 0 2px 12px rgba(0,0,0,0.3); }
+.trace-card:hover { box-shadow: 0 8px 32px rgba(0,6,102,0.14); border-color: rgba(0,6,102,0.24); transform: translateY(-2px); }
+.dark .trace-card:hover { box-shadow: 0 8px 32px rgba(0,0,0,0.5); border-color: rgba(189,194,255,0.28); }
+.trace-card.supervisor-card { border-left: 3px solid #000666; }
+.dark .trace-card.supervisor-card { border-left-color: #bdc2ff; }
+.trace-card.failure-card { border-left: 3px solid #ba1a1a; }
+.dark .trace-card.failure-card { border-left-color: #ffb4ab; }
+
+/* ── Tooltip (fixed, JS-driven) ── */
+#trace-tooltip {
+  display: none;
+  position: fixed;
+  z-index: 9999;
+  width: 340px;
+  max-height: 75vh;
+  overflow-y: auto;
+  border-radius: 14px;
+  padding: 16px;
+  pointer-events: none;
+  font-family: Inter, sans-serif;
+  font-size: 12px;
+  line-height: 1.5;
+  transition: opacity 0.12s;
+}
+
+/* ── Text classes ── */
+.trace-node-name { color: #1b1c1a; font-weight: 700; }
+.trace-node-name.supervisor { color: #000666; }
+.dark .trace-node-name { color: #e4e2ff; }
+.dark .trace-node-name.supervisor { color: #bdc2ff; }
+.trace-success { color: #006a62; }
+.dark .trace-success { color: #84f5e8; }
+.trace-failure-text { color: #ba1a1a; }
+.dark .trace-failure-text { color: #ffb4ab; }
+.trace-other { color: #000666; }
+.dark .trace-other { color: #bdc2ff; }
+.trace-muted { color: #767683; }
+.dark .trace-muted { color: #8d9db5; }
+.trace-muted-dim { color: rgba(118,118,131,0.6); }
+.dark .trace-muted-dim { color: rgba(141,157,181,0.6); }
+.trace-accent { color: #000666; }
+.dark .trace-accent { color: #bdc2ff; }
+
+/* ── Panels / cells ── */
+.trace-panel { background: #f5f3ef; }
+.dark .trace-panel { background: #14142a; }
+.trace-panel-heading { color: #1b1c1a; }
+.dark .trace-panel-heading { color: #e4e2ff; }
+.trace-bar-track { background: #eae8e4; }
+.dark .trace-bar-track { background: #24243a; }
+.trace-cell { background: #ffffff; border: 1px solid #eae8e4; }
+.dark .trace-cell { background: #181828; border-color: rgba(189,194,255,0.1); }
+.trace-cell-label { color: #767683; }
+.dark .trace-cell-label { color: #8d9db5; }
+.trace-cell-value { color: #1b1c1a; }
+.dark .trace-cell-value { color: #e4e2ff; }
+
+/* ── Connector ── */
+.trace-connector { background: linear-gradient(to right, rgba(0,6,102,0.3), rgba(198,197,212,0.12)); flex-shrink:0; }
+.dark .trace-connector { background: linear-gradient(to right, rgba(189,194,255,0.3), rgba(189,194,255,0.04)); }
+
+/* ── Seq badge ── */
+.seq-badge { background:#f5f3ef; color:#767683; font-size:10px; font-weight:700; font-family:monospace; padding:2px 7px; border-radius:20px; flex-shrink:0; }
+.dark .seq-badge { background:#24243a; color:#8d9db5; }
+.seq-badge.supervisor { background:rgba(0,6,102,0.08); color:#000666; }
+.dark .seq-badge.supervisor { background:rgba(189,194,255,0.1); color:#bdc2ff; }
+
+/* ── Tooltip scrollbar (webkit) ── */
+#trace-tooltip::-webkit-scrollbar { width: 5px; }
+#trace-tooltip::-webkit-scrollbar-track { background: #0f1e2e; border-radius: 10px; }
+#trace-tooltip::-webkit-scrollbar-thumb { background: #2a3a4d; border-radius: 10px; }
+#trace-tooltip::-webkit-scrollbar-thumb:hover { background: #3a4f68; }
+/* Light mode scrollbar */
+.light #trace-tooltip::-webkit-scrollbar-track { background: #f2f4f6; }
+.light #trace-tooltip::-webkit-scrollbar-thumb { background: #c3c6d5; }
+.light #trace-tooltip::-webkit-scrollbar-thumb:hover { background: #a0a8b8; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Single fixed tooltip -->
+<div id="trace-tooltip"></div>
+
+<!-- ═══ SEARCH BAR ═══ -->
+<div class="mb-8">
+  <div class="flex items-center justify-between mb-4">
+    <div>
+      <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant mb-1">Admin · Forensic Intelligence</p>
+      <h1 class="text-3xl font-headline font-extrabold tracking-tight text-primary">Execution Trace</h1>
+    </div>
+  </div>
+  <form action="/trace/search" method="get" class="flex items-center gap-3" autocomplete="off">
+    <div class="relative flex-1 max-w-lg" id="search-wrap">
+      <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant/50 text-lg pointer-events-none">search</span>
+      <input type="text"
+             id="case-search"
+             name="case_id"
+             value="{{ current_case_id if current_case_id is defined and current_case_id else '' }}"
+             placeholder="Search by case ID (e.g. 7e2a67ea...)"
+             class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-outline-variant/20 bg-surface text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+             autocomplete="off"/>
+
+      <!-- Dropdown -->
+      <div id="search-dropdown"
+           class="hidden absolute left-0 right-0 top-[calc(100%+6px)] z-50 rounded-xl border border-outline-variant/20 bg-surface shadow-xl overflow-hidden">
+        <div id="search-results"></div>
+      </div>
+    </div>
+    <button type="submit"
+            class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-on-primary text-sm font-semibold hover:opacity-90 transition-all">
+      <span class="material-symbols-outlined text-lg">account_tree</span>
+      Find Trace
+    </button>
+    <a href="/trace/latest"
+       class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-surface-container text-on-surface-variant text-sm hover:bg-surface-container-high transition-colors">
+      <span class="material-symbols-outlined text-lg">history</span>
+      Latest
+    </a>
+  </form>
+
+  {% if search_error is defined and search_error %}
+  <div class="mt-3 flex items-center gap-2 px-4 py-3 rounded-xl border border-error/20 bg-error-container/10 text-sm text-error max-w-lg">
+    <span class="material-symbols-outlined text-lg shrink-0">error</span>
+    {{ search_error }}
+  </div>
+  {% endif %}
+</div>
+
+<style>
+.suggestion-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(195,198,213,0.12);
+  transition: background 0.1s;
+  gap: 10px;
+}
+.suggestion-row:last-child { border-bottom: none; }
+.suggestion-row:hover,
+.suggestion-row.active { background: rgba(0,6,102,0.07); }
+.dark .suggestion-row:hover,
+.dark .suggestion-row.active { background: rgba(173,199,255,0.07); }
+</style>
+
+<script>
+(function () {
+  const input    = document.getElementById('case-search');
+  const dropdown = document.getElementById('search-dropdown');
+  const results  = document.getElementById('search-results');
+  if (!input) return;
+
+  let timer = null;
+  let active = -1;
+  let items  = [];
+
+  const sev = s => ({ critical:'#ba1a1a', high:'rgba(186,26,26,0.7)' }[s] || '#737784');
+  const stBg = s => ({ completed:'rgba(0,62,63,0.1)', failed:'rgba(186,26,26,0.1)', escalated:'rgba(186,26,26,0.1)' }[s] || 'rgba(0,6,102,0.1)');
+  const stCl = s => ({ completed:'#003e3f', failed:'#ba1a1a', escalated:'#ba1a1a' }[s] || '#000666');
+
+  function render(data) {
+    items  = data;
+    active = -1;
+    if (!data.length) { dropdown.classList.add('hidden'); return; }
+
+    results.innerHTML = data.map((r, i) => `
+      <div class="suggestion-row" data-i="${i}">
+        <div style="min-width:0;">
+          <div style="font-family:monospace;font-size:12px;font-weight:700;color:#000666;" class="trace-accent">#${r.case_id}</div>
+          <div style="font-size:10px;color:#737784;margin-top:1px;">${r.started_at}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:5px;flex-shrink:0;">
+          ${r.final_severity ? `<span style="font-size:9px;font-weight:700;text-transform:uppercase;color:${sev(r.final_severity)}">${r.final_severity}</span>` : ''}
+          <span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;background:${stBg(r.run_status)};color:${stCl(r.run_status)}">
+            ${r.run_status.replace(/_/g,' ')}
+          </span>
+        </div>
+      </div>`).join('');
+
+    results.querySelectorAll('.suggestion-row').forEach(el => {
+      el.addEventListener('mousedown', e => { e.preventDefault(); go(+el.dataset.i); });
+    });
+    dropdown.classList.remove('hidden');
+  }
+
+  function setActive(i) {
+    results.querySelectorAll('.suggestion-row').forEach((el, j) => el.classList.toggle('active', j === i));
+    active = i;
+  }
+
+  function go(i) {
+    const r = items[i];
+    if (!r) return;
+    input.value = r.case_id;
+    dropdown.classList.add('hidden');
+    window.location.href = `/trace/${r.run_id}`;
+  }
+
+  input.addEventListener('input', () => {
+    clearTimeout(timer);
+    const q = input.value.trim().replace(/^#/, '');
+    if (!q) { dropdown.classList.add('hidden'); return; }
+    timer = setTimeout(async () => {
+      try {
+        const res  = await fetch(`/trace/suggestions?q=${encodeURIComponent(q)}`);
+        render(await res.json());
+      } catch { dropdown.classList.add('hidden'); }
+    }, 180);
+  });
+
+  input.addEventListener('keydown', e => {
+    const rows = results.querySelectorAll('.suggestion-row');
+    if (e.key === 'ArrowDown')  { e.preventDefault(); setActive(Math.min(active + 1, rows.length - 1)); }
+    else if (e.key === 'ArrowUp')    { e.preventDefault(); setActive(Math.max(active - 1, 0)); }
+    else if (e.key === 'Enter' && active >= 0) { e.preventDefault(); go(active); }
+    else if (e.key === 'Escape') dropdown.classList.add('hidden');
+  });
+
+  document.addEventListener('mousedown', e => {
+    if (!document.getElementById('search-wrap').contains(e.target))
+      dropdown.classList.add('hidden');
+  });
+
+  // Strip leading # before form submits
+  input.closest('form').addEventListener('submit', () => {
+    input.value = input.value.trim().replace(/^#/, '');
+  });
+})();
+</script>
+
+{% if run is none and (search_error is not defined or not search_error) %}
+<div class="py-16 text-center">
+  <span class="material-symbols-outlined text-5xl text-on-surface-variant/30 mb-4 block">account_tree</span>
+  <p class="text-lg font-headline font-bold text-on-surface-variant/60">No trace loaded</p>
+  <p class="text-sm text-on-surface-variant/40 mt-1">Search by case ID above or view the latest trace.</p>
+</div>
+{% elif run is none %}
+<div class="py-16 text-center">
+  <span class="material-symbols-outlined text-5xl text-on-surface-variant/30 mb-4 block">search_off</span>
+  <p class="text-lg font-headline font-bold text-on-surface-variant/60">Trace not found</p>
+  <p class="text-sm text-on-surface-variant/40 mt-1">Try a different case ID or check the dashboard.</p>
+</div>
+{% else %}
+
+<!-- Header -->
+<div class="flex items-start justify-between mb-8">
+  <div class="flex items-center gap-4">
+    {% set status_styles = {
+      "completed":           "background:rgba(0,62,63,0.1);color:#003e3f;",
+      "partially_completed": "background:rgba(0,6,102,0.1);color:#000666;",
+      "escalated":           "background:rgba(186,26,26,0.12);color:#ba1a1a;",
+      "failed":              "background:rgba(186,26,26,0.12);color:#ba1a1a;",
+    } %}
+    <span class="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider"
+          id="run-status-badge"
+          style="{{ status_styles.get(run.run_status, 'background:#e0e3e5;color:#737784;') }}">
+      {{ run.run_status or 'unknown' }}
+    </span>
+    <div>
+      <h1 class="text-3xl font-headline font-extrabold tracking-tight">
+        Trace <span class="font-mono trace-accent">#{{ run.run_id[:8] }}</span>
+      </h1>
+      <p class="text-sm trace-muted mt-1">
+        {% if run.started_at %}Started at {{ run.started_at.strftime('%H:%M:%S') }}{% endif %}
+        &middot; <span class="font-mono font-semibold trace-accent" id="run-total-latency">{{ total_latency }}ms</span> total
+        &middot; <span class="font-semibold" id="run-step-count">{{ step_count }}</span> steps
+        &middot; <span class="font-mono font-semibold trace-accent">${{ "%.2f"|format(run.cost_estimate_total or 0.0) }}</span>
+        &middot; <span class="font-mono font-semibold trace-accent">{{ "{:,}".format(run.token_total or 0) }} tok</span>
+        {% if run.final_route %}&middot; <span class="font-semibold trace-accent" id="run-final-route">{{ run.final_route | replace('_',' ') | title }}</span>{% else %}<span id="run-final-route" class="hidden"></span>{% endif %}
+        {% if run.final_severity %}&middot; <span id="run-final-severity" class="font-semibold {% if run.final_severity == 'critical' %}trace-failure-text{% else %}trace-accent{% endif %}">{{ run.final_severity | upper }}</span>{% else %}<span id="run-final-severity" class="hidden"></span>{% endif %}
+      </p>
+    </div>
+  </div>
+  <div class="text-xs trace-muted bg-surface-container px-3 py-2 rounded-xl flex items-center gap-1">
+    <span class="material-symbols-outlined text-sm">info</span>
+    Hover cards for details
+  </div>
+</div>
+
+<!-- ═══ LIVE PROCESSING FEED ═══ -->
+<div class="mb-8">
+  <div class="trace-panel rounded-xl p-6">
+    <div class="flex items-center justify-between mb-5">
+      <div>
+        <h2 class="font-headline font-bold text-lg trace-panel-heading">Live Processing Feed</h2>
+        <p class="text-xs trace-muted mt-1">Node updates appear here as the backend persists each step.</p>
+      </div>
+      <div id="live-trace-indicator"
+           class="text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full {% if live_enabled %}text-secondary{% else %}trace-muted{% endif %}"
+           style="{% if live_enabled %}background:rgba(0,106,98,0.12);{% else %}background:rgba(115,119,132,0.1);{% endif %}">
+        {% if live_enabled %}Live{% else %}Static{% endif %}
+      </div>
+    </div>
+    <div id="live-trace-feed" class="space-y-3">
+      {% for step in steps %}
+      {% set live_is_supervisor = step.node_name == 'supervisor' %}
+      {% set live_conf = (step.confidence * 100) | int if step.confidence else None %}
+      <div class="rounded-xl border border-outline-variant/15 bg-surface px-4 py-3" data-sequence="{{ step.sequence }}">
+        <div class="flex items-center justify-between gap-3">
+          <div class="min-w-0">
+            <div class="flex items-center gap-2">
+              <span class="seq-badge {{ 'supervisor' if live_is_supervisor else '' }}">#{{ step.sequence }}</span>
+              <span class="text-sm font-semibold trace-node-name {{ 'supervisor' if live_is_supervisor else '' }}">{{ step.node_name | replace('_',' ') | title }}</span>
+            </div>
+            <div class="mt-1 text-xs trace-muted">
+              {{ step.status | replace('_',' ') | title }}
+              {% if step.output and step.output.goto %} · Routed to {{ step.output.goto | replace('_',' ') | title }}{% endif %}
+              {% if step.error_message %} · {{ step.error_message[:120] }}{% endif %}
+            </div>
+          </div>
+          <div class="text-right shrink-0">
+            <div class="text-xs font-mono trace-accent">{{ step.latency_ms }}ms</div>
+            <div class="text-[10px] trace-muted">
+              {% if step.cost_estimate_usd %}${{ "%.4f"|format(step.cost_estimate_usd) }}{% elif live_conf is not none %}{{ live_conf }}% conf{% elif step.model_name %}{{ step.model_name }}{% else %}persisted{% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<!-- ═══ EXECUTION FLOW ═══ -->
+<div class="mb-10">
+  <h2 class="font-headline font-bold text-lg mb-5">Execution Flow</h2>
+  <div class="flex flex-wrap gap-3 items-start">
+    {% for step in steps %}
+    {% set is_failure = step.status == 'failure' %}
+    {% set is_supervisor = step.node_name == 'supervisor' %}
+    {% set conf_pct = (step.confidence * 100) | int if step.confidence else 0 %}
+    {% set conf_color = '#003e3f' if (step.confidence and step.confidence >= 0.8) else ('#000666' if (step.confidence and step.confidence >= 0.6) else '#ba1a1a') %}
+
+    <!-- Store data as JSON for JS tooltip -->
+    {% set goto = step.output.goto if (step.output and step.output.goto) else '' %}
+    {% set reasoning = step.output.reasoning if (step.output and step.output.reasoning) else '' %}
+    {% set has_output = step.output and step.output | length > 0 %}
+
+    <div class="flex items-center gap-2">
+      <div class="trace-card rounded-xl p-5 w-56 {{ 'supervisor-card' if is_supervisor else ('failure-card' if is_failure else '') }}"
+           data-seq="{{ step.sequence }}"
+           data-name="{{ step.node_name }}"
+           data-status="{{ step.status }}"
+           data-latency="{{ step.latency_ms }}"
+           data-model="{{ step.model_name or '' }}"
+           data-conf="{{ conf_pct }}"
+           data-conf-color="{{ conf_color }}"
+           data-retry="{{ step.retry_number or 0 }}"
+           data-started="{{ step.started_at or '' }}"
+           data-ended="{{ step.ended_at or '' }}"
+           data-supervisor="{{ 'true' if is_supervisor else 'false' }}"
+           data-goto="{{ goto | replace('"', '&quot;') }}"
+           data-reasoning="{{ reasoning | replace('"', '&quot;') | truncate(400) }}"
+           data-error-type="{{ step.error_type or '' }}"
+           data-error-msg="{{ (step.error_message or '') | truncate(300) | replace('"', '&quot;') }}"
+           data-output="{{ (step.output | tojson if has_output else '{}') | replace('"', '&quot;') }}"
+           data-state-diff="{{ (step.state_diff | tojson if (step.state_diff and step.state_diff | length > 0) else '{}') | replace('"', '&quot;') }}">
+
+        <!-- Header -->
+        <div class="flex items-start justify-between gap-2 mb-3">
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="seq-badge {{ 'supervisor' if is_supervisor else '' }}">#{{ step.sequence }}</span>
+            <span class="text-xs font-bold uppercase tracking-wide truncate trace-node-name {{ 'supervisor' if is_supervisor else '' }}">
+              {{ step.node_name | replace('_', ' ') }}
+            </span>
+          </div>
+          <span class="text-[10px] font-mono trace-muted shrink-0">{{ step.latency_ms }}ms</span>
+        </div>
+
+        <!-- Status -->
+        <div class="flex items-center gap-2 mb-3">
+          {% if step.status == 'success' %}
+          <span class="w-2 h-2 rounded-full shrink-0" style="background:#003e3f;"></span>
+          <span class="text-[11px] font-semibold trace-success">Success</span>
+          {% elif step.status == 'failure' %}
+          <span class="w-2 h-2 rounded-full shrink-0" style="background:#ba1a1a;"></span>
+          <span class="text-[11px] font-semibold trace-failure-text">Failed</span>
+          {% else %}
+          <span class="w-2 h-2 rounded-full shrink-0" style="background:#000666;"></span>
+          <span class="text-[11px] font-semibold trace-other">{{ step.status }}</span>
+          {% endif %}
+          {% if step.retry_number and step.retry_number > 0 %}
+          <span class="ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded trace-failure-text" style="background:rgba(186,26,26,0.1);">RETRY #{{ step.retry_number }}</span>
+          {% endif %}
+        </div>
+
+        <!-- Preview -->
+        {% if is_supervisor and step.output and step.output.goto %}
+        <div class="flex items-center gap-1 text-[11px] trace-muted">
+          <span class="trace-accent font-bold">→</span>
+          <span class="truncate">{{ step.output.goto | replace('_',' ') | title }}</span>
+        </div>
+        {% elif step.confidence %}
+        {% set cp = (step.confidence * 100) | int %}
+        {% set cc = '#003e3f' if step.confidence >= 0.8 else ('#000666' if step.confidence >= 0.6 else '#ba1a1a') %}
+        <div class="flex items-center gap-2 text-[11px] trace-muted">
+          <span>Conf:</span>
+          <div class="flex-1 h-1.5 rounded-full trace-bar-track overflow-hidden">
+            <div class="h-full rounded-full" style="width:{{ cp }}%;background:{{ cc }};"></div>
+          </div>
+          <span class="font-mono font-semibold" style="color:{{ cc }};">{{ cp }}%</span>
+        </div>
+        {% elif step.model_name %}
+        <div class="text-[10px] trace-muted-dim font-mono truncate">{{ step.model_name }}</div>
+        {% endif %}
+
+        {% if step.cost_estimate_usd or step.token_total %}
+        <div class="mt-3 pt-3 border-t border-outline-variant/10 text-[10px] trace-muted flex items-center justify-between gap-3">
+          <span>${{ "%.4f"|format(step.cost_estimate_usd or 0.0) }}</span>
+          <span>{% if step.token_total %}{{ "{:,}".format(step.token_total) }} tok{% else %}—{% endif %}</span>
+          <span>{{ step.llm_call_count or 0 }} calls</span>
+        </div>
+        {% endif %}
+
+        {% if step.error_message %}
+        <div class="mt-2 text-[10px] trace-failure-text line-clamp-2">{{ step.error_message[:80] }}</div>
+        {% endif %}
+      </div>
+
+      {% if not loop.last %}
+      <div class="flex items-center shrink-0">
+        <div class="w-5 h-px trace-connector"></div>
+        <div class="w-0 h-0" style="border-top:4px solid transparent;border-bottom:4px solid transparent;border-left:6px solid rgba(0,6,102,0.35);"></div>
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- ═══ WATERFALL + CONTEXT ═══ -->
+{% if steps %}
+<div class="grid grid-cols-12 gap-6 mb-8">
+  <div class="col-span-7">
+    <div class="trace-panel rounded-xl p-6">
+      <h2 class="font-headline font-bold text-lg mb-5 trace-panel-heading">Latency Waterfall</h2>
+      <div class="space-y-3">
+        {% for step in steps %}
+        {% set pct = (step.latency_ms / total_latency * 100) | int if total_latency > 0 else 0 %}
+        {% set bar_color = 'rgba(0,6,102,0.45)' if step.node_name == 'supervisor' else ('#ba1a1a' if step.status == 'failure' else '#000666') %}
+        <div class="flex items-center gap-3">
+          <div class="w-6 text-[10px] font-mono trace-muted text-right shrink-0">#{{ step.sequence }}</div>
+          <div class="w-28 text-xs truncate trace-muted shrink-0">{{ step.node_name | replace('_',' ') }}</div>
+          <div class="flex-1 h-3 rounded-full overflow-hidden trace-bar-track">
+            <div class="h-full rounded-full" style="width:{{ pct }}%;background:{{ bar_color }};"></div>
+          </div>
+          <div class="w-20 text-right text-[11px] font-mono trace-muted shrink-0">{{ step.latency_ms }}ms</div>
+          <div class="w-8 text-right text-[10px] trace-muted shrink-0">{{ pct }}%</div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-span-5">
+    <div class="trace-panel rounded-xl p-6 h-full">
+      <h2 class="font-headline font-bold text-lg mb-5 trace-panel-heading">Execution Context</h2>
+      <div class="grid grid-cols-2 gap-3">
+        <div class="trace-cell rounded-xl p-3">
+          <div class="text-[9px] uppercase tracking-widest mb-1 trace-cell-label">Run ID</div>
+          <div class="text-xs font-mono trace-cell-value truncate">{{ run.run_id[:16] }}</div>
+        </div>
+        <div class="trace-cell rounded-xl p-3">
+          <div class="text-[9px] uppercase tracking-widest mb-1 trace-cell-label">Company</div>
+          <div class="text-xs trace-cell-value">{{ run.company_id or '—' }}</div>
+        </div>
+        <div class="trace-cell rounded-xl p-3">
+          <div class="text-[9px] uppercase tracking-widest mb-1 trace-cell-label">Status</div>
+          <div class="text-xs font-semibold trace-cell-value">{{ run.run_status or '—' }}</div>
+        </div>
+        <div class="trace-cell rounded-xl p-3">
+          <div class="text-[9px] uppercase tracking-widest mb-1 trace-cell-label">Total Steps</div>
+          <div class="text-xs font-mono font-bold trace-cell-value">{{ step_count }}</div>
+        </div>
+        {% if run.final_route %}
+        <div class="trace-cell rounded-xl p-3">
+          <div class="text-[9px] uppercase tracking-widest mb-1 trace-cell-label">Final Route</div>
+          <div class="text-xs trace-cell-value font-semibold">{{ run.final_route | replace('_',' ') | title }}</div>
+        </div>
+        {% endif %}
+        {% if run.final_severity %}
+        {% set sev_color = '#ba1a1a' if run.final_severity == 'critical' else ('rgba(186,26,26,0.7)' if run.final_severity == 'high' else '#000666') %}
+        <div class="trace-cell rounded-xl p-3">
+          <div class="text-[9px] uppercase tracking-widest mb-1 trace-cell-label">Severity</div>
+          <div class="text-xs font-bold uppercase" style="color:{{ sev_color }};">{{ run.final_severity }}</div>
+        </div>
+        {% endif %}
+        <div class="trace-cell rounded-xl p-3">
+          <div class="text-[9px] uppercase tracking-widest mb-1 trace-cell-label">Total Latency</div>
+          <div class="text-xs font-mono font-bold trace-accent">{{ total_latency }}ms</div>
+        </div>
+        <div class="trace-cell rounded-xl p-3">
+          <div class="text-[9px] uppercase tracking-widest mb-1 trace-cell-label">Avg / Step</div>
+          <div class="text-xs font-mono trace-cell-value">{{ (total_latency / step_count) | round(1) if step_count > 0 else '—' }}ms</div>
+        </div>
+        <div class="trace-cell rounded-xl p-3">
+          <div class="text-[9px] uppercase tracking-widest mb-1 trace-cell-label">Run Cost</div>
+          <div class="text-xs font-mono font-bold trace-accent">${{ "%.2f"|format(run.cost_estimate_total or 0.0) }}</div>
+        </div>
+        <div class="trace-cell rounded-xl p-3">
+          <div class="text-[9px] uppercase tracking-widest mb-1 trace-cell-label">Tokens</div>
+          <div class="text-xs font-mono trace-cell-value">{{ "{:,}".format(run.token_total or 0) }}</div>
+        </div>
+        <div class="trace-cell rounded-xl p-3">
+          <div class="text-[9px] uppercase tracking-widest mb-1 trace-cell-label">LLM Calls</div>
+          <div class="text-xs font-mono trace-cell-value">
+            {% if run.llm_call_count_available %}
+            {{ run.llm_call_count }}
+            {% else %}
+            —
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% if not run.llm_call_count_available %}
+      <div class="mt-3 text-[11px] trace-muted">
+        Atomic LLM call history is not available for this historical aggregate-only run.
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Step summary table -->
+<div class="trace-panel rounded-xl p-6">
+  <h2 class="font-headline font-bold text-lg mb-5 trace-panel-heading">Step Summary</h2>
+  <div class="overflow-x-auto">
+    <table class="w-full text-xs">
+      <thead>
+        <tr style="border-bottom:1px solid #e0e3e5;">
+          <th class="text-left pb-3 pr-4 trace-muted font-semibold uppercase tracking-wide" style="font-size:10px;">#</th>
+          <th class="text-left pb-3 pr-4 trace-muted font-semibold uppercase tracking-wide" style="font-size:10px;">Node</th>
+          <th class="text-left pb-3 pr-4 trace-muted font-semibold uppercase tracking-wide" style="font-size:10px;">Status</th>
+          <th class="text-left pb-3 pr-4 trace-muted font-semibold uppercase tracking-wide" style="font-size:10px;">Model</th>
+          <th class="text-left pb-3 pr-4 trace-muted font-semibold uppercase tracking-wide" style="font-size:10px;">Cost</th>
+          <th class="text-left pb-3 pr-4 trace-muted font-semibold uppercase tracking-wide" style="font-size:10px;">Tokens</th>
+          <th class="text-left pb-3 pr-4 trace-muted font-semibold uppercase tracking-wide" style="font-size:10px;">Confidence</th>
+          <th class="text-left pb-3 pr-4 trace-muted font-semibold uppercase tracking-wide" style="font-size:10px;">Routing</th>
+          <th class="text-right pb-3 trace-muted font-semibold uppercase tracking-wide" style="font-size:10px;">Latency</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for step in steps %}
+        {% set is_sup = step.node_name == 'supervisor' %}
+        <tr style="border-bottom:1px solid rgba(224,227,229,0.5);" class="hover:bg-surface-container/30 transition-colors">
+          <td class="py-3 pr-4 font-mono trace-muted">#{{ step.sequence }}</td>
+          <td class="py-3 pr-4 font-semibold trace-node-name {{ 'supervisor' if is_sup else '' }}">
+            {{ step.node_name | replace('_',' ') | title }}
+            {% if step.retry_number and step.retry_number > 0 %}
+            <span class="text-[9px] ml-1 trace-failure-text">↺{{ step.retry_number }}</span>
+            {% endif %}
+          </td>
+          <td class="py-3 pr-4">
+            {% if step.status == 'success' %}<span class="trace-success font-semibold">✓ Success</span>
+            {% elif step.status == 'failure' %}<span class="trace-failure-text font-semibold">✗ Failed</span>
+            {% else %}<span class="trace-other">{{ step.status }}</span>{% endif %}
+          </td>
+          <td class="py-3 pr-4 font-mono trace-muted" style="font-size:10px;">{{ step.model_name or '—' }}</td>
+          <td class="py-3 pr-4 font-mono trace-accent" style="font-size:10px;">${{ "%.4f"|format(step.cost_estimate_usd or 0.0) }}</td>
+          <td class="py-3 pr-4 font-mono trace-muted" style="font-size:10px;">{% if step.token_total %}{{ "{:,}".format(step.token_total) }}{% else %}—{% endif %}</td>
+          <td class="py-3 pr-4">
+            {% if step.confidence %}
+            {% set cp = (step.confidence * 100) | int %}
+            {% set cc = '#003e3f' if step.confidence >= 0.8 else ('#000666' if step.confidence >= 0.6 else '#ba1a1a') %}
+            <span class="font-mono font-semibold" style="color:{{ cc }};">{{ cp }}%</span>
+            {% else %}<span class="trace-muted">—</span>{% endif %}
+          </td>
+          <td class="py-3 pr-4 trace-accent" style="font-size:11px;">
+            {% if is_sup and step.output and step.output.goto %}→ {{ step.output.goto | replace('_',' ') | title }}
+            {% else %}—{% endif %}
+          </td>
+          <td class="py-3 text-right font-mono trace-muted">{{ step.latency_ms }}ms</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% endif %}
+
+<script>
+(function () {
+  const runId = {{ (run.run_id if run else None) | tojson }};
+  const liveEnabled = {{ (live_enabled if live_enabled is defined else false) | tojson }};
+  if (!runId) return;
+
+  const feed = document.getElementById('live-trace-feed');
+  const liveIndicator = document.getElementById('live-trace-indicator');
+  const statusBadge = document.getElementById('run-status-badge');
+  const stepCountEl = document.getElementById('run-step-count');
+  const totalLatencyEl = document.getElementById('run-total-latency');
+  const routeEl = document.getElementById('run-final-route');
+  const severityEl = document.getElementById('run-final-severity');
+
+  const steps = {{ steps | tojson }};
+  let totalLatency = steps.reduce((acc, step) => acc + (Number(step.latency_ms) || 0), 0);
+  const seenSequences = new Set(steps.map(step => step.sequence));
+
+  function statusStyle(status) {
+    const map = {
+      completed: { bg: 'rgba(0,62,63,0.1)', color: '#003e3f' },
+      running: { bg: 'rgba(0,106,98,0.12)', color: '#006a62' },
+      partially_completed: { bg: 'rgba(0,6,102,0.1)', color: '#000666' },
+      needs_follow_up: { bg: 'rgba(0,6,102,0.1)', color: '#000666' },
+      escalated: { bg: 'rgba(186,26,26,0.12)', color: '#ba1a1a' },
+      failed: { bg: 'rgba(186,26,26,0.12)', color: '#ba1a1a' },
+    };
+    return map[status] || { bg: '#e0e3e5', color: '#737784' };
+  }
+
+  function renderLiveStep(step) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'rounded-xl border border-outline-variant/15 bg-surface px-4 py-3';
+    wrapper.dataset.sequence = String(step.sequence);
+    const isSupervisor = step.node_name === 'supervisor';
+    const confidence = step.confidence != null ? Math.round(step.confidence * 100) : null;
+    const route = step.output && step.output.goto ? ` · Routed to ${String(step.output.goto).replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}` : '';
+    const error = step.error_message ? ` · ${String(step.error_message).slice(0, 120)}` : '';
+    wrapper.innerHTML = `
+      <div class="flex items-center justify-between gap-3">
+        <div class="min-w-0">
+          <div class="flex items-center gap-2">
+            <span class="seq-badge ${isSupervisor ? 'supervisor' : ''}">#${step.sequence}</span>
+            <span class="text-sm font-semibold trace-node-name ${isSupervisor ? 'supervisor' : ''}">${String(step.node_name).replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</span>
+          </div>
+          <div class="mt-1 text-xs trace-muted">
+            ${String(step.status).replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}${route}${error}
+          </div>
+        </div>
+        <div class="text-right shrink-0">
+          <div class="text-xs font-mono trace-accent">${step.latency_ms}ms</div>
+          <div class="text-[10px] trace-muted">${confidence != null ? `${confidence}% conf` : (step.model_name || 'persisted')}</div>
+        </div>
+      </div>
+    `;
+    return wrapper;
+  }
+
+  function updateRunStatus(payload) {
+    if (statusBadge) {
+      const styles = statusStyle(payload.run_status);
+      statusBadge.textContent = payload.run_status || 'unknown';
+      statusBadge.style.background = styles.bg;
+      statusBadge.style.color = styles.color;
+    }
+    if (payload.final_route && routeEl) {
+      routeEl.classList.remove('hidden');
+      routeEl.textContent = payload.final_route.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    }
+    if (payload.final_severity && severityEl) {
+      severityEl.classList.remove('hidden');
+      severityEl.textContent = String(payload.final_severity).toUpperCase();
+      severityEl.className = payload.final_severity === 'critical'
+        ? 'font-semibold trace-failure-text'
+        : 'font-semibold trace-accent';
+    }
+  }
+
+  function finalizeLiveState(status) {
+    if (!liveIndicator) return;
+    const done = ['completed', 'failed', 'escalated', 'needs_follow_up'].includes(status);
+    liveIndicator.textContent = done ? 'Completed' : 'Live';
+    liveIndicator.className = `text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full ${done ? 'trace-muted' : 'text-secondary'}`;
+    liveIndicator.style.background = done ? 'rgba(115,119,132,0.1)' : 'rgba(0,106,98,0.12)';
+  }
+
+  if (liveEnabled) {
+    const source = new EventSource(`/trace/${encodeURIComponent(runId)}/stream`);
+
+    source.addEventListener('step', (event) => {
+      const payload = JSON.parse(event.data || '{}');
+      const step = payload.step;
+      if (!step || seenSequences.has(step.sequence)) return;
+      seenSequences.add(step.sequence);
+      totalLatency += Number(step.latency_ms) || 0;
+      if (feed) {
+        feed.appendChild(renderLiveStep(step));
+      }
+      if (stepCountEl) {
+        stepCountEl.textContent = String(seenSequences.size);
+      }
+      if (totalLatencyEl) {
+        totalLatencyEl.textContent = `${Math.round(totalLatency * 10) / 10}ms`;
+      }
+      updateRunStatus(payload);
+    });
+
+    source.addEventListener('run', (event) => {
+      const payload = JSON.parse(event.data || '{}');
+      updateRunStatus(payload);
+      finalizeLiveState(payload.run_status);
+    });
+
+    source.addEventListener('done', (event) => {
+      const payload = JSON.parse(event.data || '{}');
+      updateRunStatus(payload);
+      finalizeLiveState(payload.run_status);
+      source.close();
+    });
+
+    source.addEventListener('error', () => {
+      finalizeLiveState('failed');
+      source.close();
+    });
+  }
+})();
+</script>
+
+<script>
+(function () {
+  const tip = document.getElementById('trace-tooltip');
+  const dark = () => document.documentElement.classList.contains('dark');
+  let hideTimer = null;
+
+  // Theme-aware color palette
+  function colors() {
+    const d = dark();
+    return {
+      bg:        d ? '#0f1e2e' : '#ffffff',
+      border:    d ? 'rgba(173,199,255,0.15)' : '#e0e3e5',
+      text:      d ? '#dae2f3' : '#191c1e',
+      muted:     d ? '#8d9db5' : '#737784',
+      accent:    d ? '#bdc2ff' : '#000666',
+      subtle:    d ? 'rgba(173,199,255,0.06)' : '#f8f9fb',
+      divider:   d ? 'rgba(173,199,255,0.08)' : '#f0f0f0',
+      codeBg:    d ? '#0d1a27'  : '#f2f4f6',
+      codeText:  d ? '#bdc2ff'  : '#000666',
+      barTrack:  d ? '#2a3a4d'  : '#e0e3e5',
+    };
+  }
+
+  function badge(text, bg, color) {
+    return `<span style="display:inline-block;font-size:10px;font-weight:700;padding:2px 9px;border-radius:20px;background:${bg};color:${color};margin-right:4px;">${text}</span>`;
+  }
+
+  function section(label, content, c) {
+    return `<div style="margin-top:10px;padding-top:10px;border-top:1px solid ${c.divider};">
+      <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;color:${c.muted};margin-bottom:5px;">${label}</div>
+      ${content}
+    </div>`;
+  }
+
+  function buildTooltip(card, c) {
+    const d = card.dataset;
+    const isSup = d.supervisor === 'true';
+    const conf = parseInt(d.conf) || 0;
+    const confColor = d.confColor;
+
+    // Parse output and state_diff safely
+    let output = {};
+    let stateDiff = {};
+    try { output = JSON.parse(d.output.replace(/&quot;/g, '"')); } catch(e) {}
+    try { stateDiff = JSON.parse(d.stateDiff.replace(/&quot;/g, '"')); } catch(e) {}
+    const goto_ = d.goto.replace(/&quot;/g, '"');
+    const reasoning = d.reasoning.replace(/&quot;/g, '"');
+    const errorMsg = d.errorMsg.replace(/&quot;/g, '"');
+
+    let html = '';
+
+    // ── Header ──
+    html += `<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+      <div>
+        <div style="font-family:Manrope,sans-serif;font-weight:800;font-size:13px;color:${isSup ? c.accent : c.text};letter-spacing:0.03em;">
+          ${d.name.replace(/_/g,' ').toUpperCase()}
+        </div>
+        <div style="font-size:10px;color:${c.muted};margin-top:2px;">
+          Step #${d.seq}${d.started ? ' &middot; ' + d.started : ''}${d.ended ? ' → ' + d.ended : ''}
+        </div>
+      </div>
+      <div style="text-align:right;flex-shrink:0;margin-left:12px;">
+        <div style="font-family:monospace;font-weight:700;font-size:16px;color:${c.accent};">${d.latency}ms</div>
+        <div style="font-size:9px;color:${c.muted};text-transform:uppercase;letter-spacing:0.1em;">latency</div>
+      </div>
+    </div>`;
+
+    // ── Status badges ──
+    html += `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:2px;">`;
+    if (d.status === 'success') html += badge('✓ SUCCESS', 'rgba(0,62,63,0.12)', '#003e3f');
+    else if (d.status === 'failure') html += badge('✗ FAILED', 'rgba(186,26,26,0.12)', '#ba1a1a');
+    else html += badge(d.status.toUpperCase(), 'rgba(0,6,102,0.12)', '#000666');
+    if (parseInt(d.retry) > 0) html += badge('RETRY #' + d.retry, 'rgba(186,26,26,0.1)', '#ba1a1a');
+    if (d.model) html += badge(d.model, `rgba(115,119,132,0.1)`, c.muted);
+    html += `</div>`;
+
+    // ── Confidence ──
+    if (conf > 0) {
+      html += section('Confidence',
+        `<div style="display:flex;align-items:center;gap:8px;">
+          <div style="flex:1;height:5px;background:${c.barTrack};border-radius:3px;overflow:hidden;">
+            <div style="height:100%;width:${conf}%;background:${confColor};border-radius:3px;"></div>
+          </div>
+          <span style="font-family:monospace;font-weight:700;font-size:13px;color:${confColor};">${conf}%</span>
+        </div>`, c);
+    }
+
+    // ── Supervisor: routing + reasoning ──
+    if (isSup) {
+      if (goto_) {
+        html += section('Routing Decision',
+          `<div style="font-size:13px;font-weight:600;color:${c.accent};">→ ${goto_.replace(/_/g,' ').replace(/\b\w/g, l => l.toUpperCase())}</div>`, c);
+      }
+      if (reasoning) {
+        html += section('Reasoning',
+          `<div style="font-size:11px;color:${c.text};line-height:1.65;opacity:0.85;">${reasoning}</div>`, c);
+      }
+    } else if (Object.keys(output).length > 0) {
+      // ── Non-supervisor output fields ──
+      const skipKeys = ['reasoning'];
+      const entries = Object.entries(output).filter(([k, v]) => v !== null && v !== undefined && v !== '' && !skipKeys.includes(k));
+      if (entries.length > 0) {
+        let rows = entries.map(([k, v]) => {
+          const display = typeof v === 'string' ? v : JSON.stringify(v);
+          return `<div style="display:flex;gap:8px;margin-bottom:5px;align-items:flex-start;">
+            <span style="font-size:9px;font-weight:700;color:${c.muted};text-transform:uppercase;width:88px;flex-shrink:0;padding-top:1px;">${k.replace(/_/g,' ')}</span>
+            <span style="font-size:11px;color:${c.text};word-break:break-word;">${display}</span>
+          </div>`;
+        }).join('');
+        html += section('Output', rows, c);
+      }
+      if (output.reasoning) {
+        html += section('Reasoning',
+          `<div style="font-size:11px;color:${c.text};line-height:1.65;opacity:0.85;">${output.reasoning}</div>`, c);
+      }
+    }
+
+    // ── Error ──
+    if (errorMsg) {
+      const errLabel = d.errorType || 'Error';
+      html += section(`<span style="color:#ba1a1a;">${errLabel}</span>`,
+        `<div style="font-family:monospace;font-size:11px;background:rgba(186,26,26,0.07);color:#ba1a1a;padding:7px 9px;border-radius:7px;line-height:1.6;max-height:90px;overflow-y:auto;white-space:pre-wrap;word-break:break-word;">${errorMsg}</div>`, c);
+    }
+
+    // ── State diff ──
+    if (Object.keys(stateDiff).length > 0) {
+      html += section('State Changes',
+        `<div style="font-family:monospace;font-size:10px;background:${c.codeBg};color:${c.codeText};padding:7px 9px;border-radius:7px;line-height:1.6;max-height:90px;overflow-y:auto;white-space:pre-wrap;word-break:break-word;">${JSON.stringify(stateDiff, null, 2)}</div>`, c);
+    }
+
+    return html;
+  }
+
+  function positionTooltip(e) {
+    const W = tip.offsetWidth || 340;
+    const H = tip.offsetHeight || 200;
+    const VW = window.innerWidth;
+    const VH = window.innerHeight;
+    const OFF = 18;
+    let x = e.clientX + OFF;
+    let y = e.clientY + OFF;
+    if (x + W > VW - 8) x = e.clientX - W - OFF;
+    if (y + H > VH - 8) y = e.clientY - H - OFF;
+    x = Math.max(8, x);
+    y = Math.max(8, y);
+    tip.style.left = x + 'px';
+    tip.style.top  = y + 'px';
+  }
+
+  document.querySelectorAll('.trace-card').forEach(card => {
+    card.addEventListener('mouseenter', function (e) {
+      clearTimeout(hideTimer);
+      const c = colors();
+      tip.style.cssText = `
+        display:block; opacity:0; position:fixed; z-index:9999;
+        width:340px; max-height:75vh; overflow-y:auto;
+        border-radius:14px; padding:16px;
+        background:${c.bg}; border:1px solid ${c.border};
+        color:${c.text};
+        box-shadow:0 20px 60px rgba(0,0,0,0.18),0 4px 16px rgba(0,0,0,0.08);
+        font-family:Inter,sans-serif; font-size:12px; line-height:1.5;
+        pointer-events:auto; transition:opacity 0.12s;
+        scrollbar-width:thin;
+        scrollbar-color:${dark() ? '#2a3a4d #0f1e2e' : '#c3c6d5 #f2f4f6'};
+      `;
+      // Inject webkit scrollbar styles dynamically for current theme
+      let scrollStyle = document.getElementById('tt-scroll-style');
+      if (!scrollStyle) {
+        scrollStyle = document.createElement('style');
+        scrollStyle.id = 'tt-scroll-style';
+        document.head.appendChild(scrollStyle);
+      }
+      const isDk = dark();
+      scrollStyle.textContent = `
+        #trace-tooltip::-webkit-scrollbar { width: 5px; }
+        #trace-tooltip::-webkit-scrollbar-track { background: ${isDk ? '#0f1e2e' : '#f2f4f6'}; border-radius: 10px; }
+        #trace-tooltip::-webkit-scrollbar-thumb { background: ${isDk ? '#2a3a4d' : '#c3c6d5'}; border-radius: 10px; }
+        #trace-tooltip::-webkit-scrollbar-thumb:hover { background: ${isDk ? '#3a5068' : '#a0a8b8'}; }
+      `;
+      tip.innerHTML = buildTooltip(this, c);
+      positionTooltip(e); // position once on enter, then stays pinned
+      requestAnimationFrame(() => { tip.style.opacity = '1'; });
+    });
+
+    card.addEventListener('mouseleave', (e) => {
+      // Only hide if cursor isn't moving into the tooltip
+      hideTimer = setTimeout(() => {
+        if (!tip.matches(':hover')) {
+          tip.style.opacity = '0';
+          setTimeout(() => { tip.style.display = 'none'; }, 130);
+        }
+      }, 80);
+    });
+  });
+
+  // Hide when cursor leaves the tooltip itself
+  tip.addEventListener('mouseleave', () => {
+    hideTimer = setTimeout(() => {
+      tip.style.opacity = '0';
+      setTimeout(() => { tip.style.display = 'none'; }, 130);
+    }, 80);
+  });
+
+  // Keep visible while hovering tooltip
+  tip.addEventListener('mouseenter', () => {
+    clearTimeout(hideTimer);
+  });
+})();
+</script>
+
+<script>
+(function () {
+  const input      = document.getElementById('case-search');
+  const dropdown   = document.getElementById('search-dropdown');
+  const results    = document.getElementById('search-results');
+  if (!input) return;
+
+  const isDark = () => document.documentElement.classList.contains('dark');
+
+  let debounceTimer = null;
+  let currentFocus  = -1;
+  let items         = [];
+
+  function severityColor(s) {
+    if (!s) return '#737784';
+    if (s === 'critical') return '#ba1a1a';
+    if (s === 'high')     return 'rgba(186,26,26,0.7)';
+    if (s === 'low')      return '#003e3f';
+    return '#000666';
+  }
+
+  function statusBg(s) {
+    const m = { completed:'rgba(0,62,63,0.1)', partially_completed:'rgba(0,6,102,0.1)', escalated:'rgba(186,26,26,0.1)', failed:'rgba(186,26,26,0.1)' };
+    return m[s] || 'rgba(115,119,132,0.1)';
+  }
+
+  function statusColor(s) {
+    const m = { completed:'#003e3f', partially_completed:'#000666', escalated:'#ba1a1a', failed:'#ba1a1a' };
+    return m[s] || '#737784';
+  }
+
+  function accentColor() { return isDark() ? '#bdc2ff' : '#000666'; }
+  function textColor()   { return isDark() ? '#dae2f3' : '#191c1e'; }
+  function mutedColor()  { return isDark() ? '#8d9db5' : '#737784'; }
+  function hoverBg()     { return isDark() ? '#1c2a3a' : '#f2f4f6'; }
+  function divColor()    { return isDark() ? 'rgba(173,199,255,0.06)' : 'rgba(0,0,0,0.05)'; }
+
+  function applyDropdownTheme() {
+    dropdown.style.background   = isDark() ? '#0f1e2e' : '#ffffff';
+    dropdown.style.borderColor  = isDark() ? 'rgba(173,199,255,0.15)' : 'rgba(195,198,213,0.4)';
+  }
+
+  function renderItems(data) {
+    items = data;
+    currentFocus = -1;
+    applyDropdownTheme();
+
+    if (!data.length) {
+      results.innerHTML = `<div style="padding:14px 16px;font-size:12px;color:${mutedColor()};text-align:center;">No matches found</div>`;
+      dropdown.classList.remove('hidden');
+      return;
+    }
+
+    results.innerHTML = data.map((r, i) => `
+      <div class="ac-item" data-run="${r.run_id}" data-idx="${i}"
+           style="display:flex;align-items:center;justify-content:space-between;
+                  padding:10px 14px;cursor:pointer;
+                  border-bottom:1px solid ${divColor()};
+                  transition:background 0.1s;">
+        <div style="display:flex;align-items:center;gap:10px;min-width:0;">
+          <span class="ac-mono" style="font-family:monospace;font-size:12px;font-weight:700;color:${accentColor()};flex-shrink:0;">#${r.case_id.slice(0,12)}</span>
+          <div style="display:flex;gap:5px;flex-wrap:wrap;">
+            <span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;
+                         background:${statusBg(r.status)};color:${statusColor(r.status)};text-transform:uppercase;">
+              ${r.status.replace(/_/g,' ')}
+            </span>
+            ${r.severity ? `<span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;
+                         background:rgba(186,26,26,0.06);color:${severityColor(r.severity)};text-transform:uppercase;">
+              ${r.severity}</span>` : ''}
+          </div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;margin-left:10px;">
+          ${r.route ? `<div style="font-size:10px;color:${accentColor()};font-weight:600;">→ ${r.route.replace(/_/g,' ')}</div>` : ''}
+          <div style="font-size:9px;color:${mutedColor()};">${r.started_at}</div>
+        </div>
+      </div>
+    `).join('');
+
+    document.querySelectorAll('.ac-item').forEach(el => {
+      el.addEventListener('mouseenter', () => { el.style.background = hoverBg(); });
+      el.addEventListener('mouseleave', () => { el.style.background = 'transparent'; });
+      el.addEventListener('mousedown',  (e) => { e.preventDefault(); window.location.href = `/trace/${el.dataset.run}`; });
+    });
+
+    dropdown.classList.remove('hidden');
+  }
+
+  function highlightItem(idx) {
+    document.querySelectorAll('.ac-item').forEach((el, i) => {
+      el.style.background = i === idx ? hoverBg() : 'transparent';
+    });
+  }
+
+  function closeDropdown() { dropdown.classList.add('hidden'); currentFocus = -1; }
+
+  async function fetchMatches(q) {
+    if (q.length < 2) { closeDropdown(); return; }
+    try {
+      const res  = await fetch(`/trace/autocomplete?q=${encodeURIComponent(q)}`);
+      const data = await res.json();
+      renderItems(data);
+    } catch(e) { closeDropdown(); }
+  }
+
+  input.addEventListener('input', () => {
+    clearTimeout(debounceTimer);
+    const q = input.value.trim().replace(/^#/, '');
+    if (!q) { closeDropdown(); return; }
+    debounceTimer = setTimeout(() => fetchMatches(q), 200);
+  });
+
+  input.addEventListener('keydown', (e) => {
+    if (dropdown.classList.contains('hidden')) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      currentFocus = Math.min(currentFocus + 1, items.length - 1);
+      highlightItem(currentFocus);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      currentFocus = Math.max(currentFocus - 1, 0);
+      highlightItem(currentFocus);
+    } else if (e.key === 'Enter' && currentFocus >= 0) {
+      e.preventDefault();
+      window.location.href = `/trace/${items[currentFocus].run_id}`;
+    } else if (e.key === 'Escape') {
+      closeDropdown();
+    }
+  });
+
+  input.addEventListener('focus', applyDropdownTheme);
+  document.addEventListener('mousedown', (e) => {
+    if (!document.getElementById('search-wrap').contains(e.target)) closeDropdown();
+  });
+  new MutationObserver(applyDropdownTheme).observe(
+    document.documentElement, { attributes: true, attributeFilter: ['class'] }
+  );
+})();
+</script>
+
+{% endblock %}

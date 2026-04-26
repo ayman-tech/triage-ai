@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}Pain Points — TriageAI{% endblock %}
+
+{% block head %}
+<style>
+  .marketing-page {
+    background: #fbf9f5;
+    color: #10111a;
+  }
+  .brand-topnav {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    width: 100%;
+    background: #ffffff;
+    box-shadow: 0px 1px 0px rgba(0, 6, 102, 0.08), 0px 4px 24px rgba(0, 6, 102, 0.06);
+  }
+</style>
+<script>
+  document.documentElement.classList.remove('dark');
+  localStorage.setItem('theme', 'light');
+</script>
+{% endblock %}
+
+{% block content %}
+<style>
+  body { background: #fbf9f5 !important; color: #10111a !important; }
+  main { margin-left: 0 !important; padding-top: 0 !important; }
+  main > div { padding: 0 !important; }
+</style>
+<div class="marketing-page">
+  <nav class="brand-topnav">
+    <div class="flex justify-between items-center px-12 py-4 max-w-full mx-auto">
+      <a href="/" class="text-2xl font-bold tracking-tighter font-headline" style="color:#000666;">TriageAI</a>
+      <div class="hidden md:flex items-center gap-8 font-headline font-semibold tracking-tight">
+        <a href="/"
+           class="transition-all duration-300"
+           style="color:{% if active_nav == 'platform' %}#000666{% else %}#636573{% endif %};{% if active_nav == 'platform' %} border-bottom:2px solid #000666; padding-bottom:4px;{% endif %}">Platform</a>
+        <a href="/pain-points"
+           class="transition-all duration-300"
+           style="color:{% if active_nav == 'pain_points' %}#000666{% else %}#636573{% endif %};{% if active_nav == 'pain_points' %} border-bottom:2px solid #000666; padding-bottom:4px;{% endif %}">Pain Points</a>
+        <a href="/agentic-solution"
+           class="transition-all duration-300"
+           style="color:{% if active_nav == 'agentic_solution' %}#000666{% else %}#636573{% endif %};{% if active_nav == 'agentic_solution' %} border-bottom:2px solid #000666; padding-bottom:4px;{% endif %}">Agentic Solution</a>
+      </div>
+      <div class="flex items-center gap-4">
+        <a href="/login" class="font-headline font-semibold px-6 py-2 rounded-full transition-all" style="color:#000666;">Login</a>
+        <a href="/login" class="px-8 py-3 rounded-full font-headline font-bold transition-transform" style="background:linear-gradient(135deg,#000666,#1a237e);color:#ffffff;">Get Started</a>
+      </div>
+    </div>
+  </nav>
+
+  <section class="px-12 py-24">
+    <div class="max-w-7xl mx-auto">
+      <div class="max-w-3xl">
+        <span class="inline-flex items-center rounded-full px-4 py-2 text-xs font-bold uppercase tracking-[0.22em]" style="background:#dff5f1;color:#006a62;">Current Business Friction</span>
+        <h1 class="mt-8 font-headline text-6xl font-extrabold tracking-tight leading-tight" style="color:#000666;">
+          The complaint operation breaks down where business risk is highest.
+        </h1>
+        <p class="mt-6 text-xl leading-relaxed" style="color:#434653;">
+          Most teams are still stitching together email, spreadsheets, ticketing tools, and manual judgement. That slows resolution, weakens auditability, and makes consistent handling nearly impossible at scale.
+        </p>
+      </div>
+
+      <div class="mt-16 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+        <div class="rounded-[2rem] p-8 shadow-lg" style="background:#ffffff;">
+          <p class="text-xs font-bold uppercase tracking-[0.22em]" style="color:#006a62;">01</p>
+          <h2 class="mt-4 font-headline text-2xl font-bold" style="color:#000666;">Fragmented intake</h2>
+          <p class="mt-4 text-sm leading-7" style="color:#434653;">Narratives, screenshots, letters, and PDFs arrive in different channels and never resolve into one dependable case record.</p>
+        </div>
+        <div class="rounded-[2rem] p-8 shadow-lg" style="background:#ffffff;">
+          <p class="text-xs font-bold uppercase tracking-[0.22em]" style="color:#006a62;">02</p>
+          <h2 class="mt-4 font-headline text-2xl font-bold" style="color:#000666;">Inconsistent triage</h2>
+          <p class="mt-4 text-sm leading-7" style="color:#434653;">Similar complaints are classified differently by different reviewers, which creates routing errors and weakens service-level discipline.</p>
+        </div>
+        <div class="rounded-[2rem] p-8 shadow-lg" style="background:#ffffff;">
+          <p class="text-xs font-bold uppercase tracking-[0.22em]" style="color:#006a62;">03</p>
+          <h2 class="mt-4 font-headline text-2xl font-bold" style="color:#000666;">Low visibility</h2>
+          <p class="mt-4 text-sm leading-7" style="color:#434653;">Leaders see the backlog, but not the reasoning, evidence, bottlenecks, or control failures driving each complaint decision.</p>
+        </div>
+        <div class="rounded-[2rem] p-8 shadow-lg" style="background:#ffffff;">
+          <p class="text-xs font-bold uppercase tracking-[0.22em]" style="color:#006a62;">04</p>
+          <h2 class="mt-4 font-headline text-2xl font-bold" style="color:#000666;">Weak audit readiness</h2>
+          <p class="mt-4 text-sm leading-7" style="color:#434653;">When regulators, compliance, or senior operations ask why a case moved a certain way, the evidence is scattered across tools and humans.</p>
+        </div>
+      </div>
+
+      <div class="mt-16 rounded-[2.5rem] p-10 shadow-xl" style="background:linear-gradient(135deg,#000666,#1a237e);color:#ffffff;">
+        <div class="grid gap-8 lg:grid-cols-3">
+          <div>
+            <p class="text-xs uppercase tracking-[0.22em]" style="color:#81f3e5;">What it creates</p>
+            <h2 class="mt-4 font-headline text-3xl font-bold">Operational pain compounds into compliance exposure.</h2>
+          </div>
+          <div class="lg:col-span-2 grid gap-5 md:grid-cols-3">
+            <div class="rounded-[1.75rem] p-5" style="background:rgba(255,255,255,0.08);">
+              <p class="text-sm font-semibold">Higher handling cost</p>
+              <p class="mt-2 text-sm" style="color:rgba(255,255,255,0.8);">Every complaint needs more manual review than the case actually warrants.</p>
+            </div>
+            <div class="rounded-[1.75rem] p-5" style="background:rgba(255,255,255,0.08);">
+              <p class="text-sm font-semibold">Longer resolution time</p>
+              <p class="mt-2 text-sm" style="color:rgba(255,255,255,0.8);">Missing evidence and routing uncertainty slow down actions that should be immediate.</p>
+            </div>
+            <div class="rounded-[1.75rem] p-5" style="background:rgba(255,255,255,0.08);">
+              <p class="text-sm font-semibold">Lower management trust</p>
+              <p class="mt-2 text-sm" style="color:rgba(255,255,255,0.8);">If reasoning is not visible, outcomes are harder to defend and harder to improve.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-16 flex flex-wrap gap-4">
+        <a href="/agentic-solution" class="px-8 py-4 rounded-full font-headline font-bold" style="background:#000666;color:#ffffff;">See the Agentic Solution</a>
+        <a href="/" class="px-8 py-4 rounded-full font-headline font-bold border" style="border-color:#d0d4e6;color:#000666;background:#ffffff;">Back to Platform</a>
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}

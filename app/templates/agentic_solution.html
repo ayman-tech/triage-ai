@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block title %}Agentic Solution — TriageAI{% endblock %}
+
+{% block head %}
+<style>
+  .marketing-page {
+    background: #fbf9f5;
+    color: #10111a;
+  }
+  .brand-topnav {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    width: 100%;
+    background: #ffffff;
+    box-shadow: 0px 1px 0px rgba(0, 6, 102, 0.08), 0px 4px 24px rgba(0, 6, 102, 0.06);
+  }
+</style>
+<script>
+  document.documentElement.classList.remove('dark');
+  localStorage.setItem('theme', 'light');
+</script>
+{% endblock %}
+
+{% block content %}
+<style>
+  body { background: #fbf9f5 !important; color: #10111a !important; }
+  main { margin-left: 0 !important; padding-top: 0 !important; }
+  main > div { padding: 0 !important; }
+</style>
+<div class="marketing-page">
+  <nav class="brand-topnav">
+    <div class="flex justify-between items-center px-12 py-4 max-w-full mx-auto">
+      <a href="/" class="text-2xl font-bold tracking-tighter font-headline" style="color:#000666;">TriageAI</a>
+      <div class="hidden md:flex items-center gap-8 font-headline font-semibold tracking-tight">
+        <a href="/"
+           class="transition-all duration-300"
+           style="color:{% if active_nav == 'platform' %}#000666{% else %}#636573{% endif %};{% if active_nav == 'platform' %} border-bottom:2px solid #000666; padding-bottom:4px;{% endif %}">Platform</a>
+        <a href="/pain-points"
+           class="transition-all duration-300"
+           style="color:{% if active_nav == 'pain_points' %}#000666{% else %}#636573{% endif %};{% if active_nav == 'pain_points' %} border-bottom:2px solid #000666; padding-bottom:4px;{% endif %}">Pain Points</a>
+        <a href="/agentic-solution"
+           class="transition-all duration-300"
+           style="color:{% if active_nav == 'agentic_solution' %}#000666{% else %}#636573{% endif %};{% if active_nav == 'agentic_solution' %} border-bottom:2px solid #000666; padding-bottom:4px;{% endif %}">Agentic Solution</a>
+      </div>
+      <div class="flex items-center gap-4">
+        <a href="/login" class="font-headline font-semibold px-6 py-2 rounded-full transition-all" style="color:#000666;">Login</a>
+        <a href="/login" class="px-8 py-3 rounded-full font-headline font-bold transition-transform" style="background:linear-gradient(135deg,#000666,#1a237e);color:#ffffff;">Get Started</a>
+      </div>
+    </div>
+  </nav>
+
+  <section class="px-12 py-24">
+    <div class="max-w-7xl mx-auto">
+      <div class="grid gap-12 lg:grid-cols-2 lg:items-center">
+        <div>
+          <span class="inline-flex items-center rounded-full px-4 py-2 text-xs font-bold uppercase tracking-[0.22em]" style="background:#dff5f1;color:#006a62;">Proposed Operating Model</span>
+          <h1 class="mt-8 font-headline text-6xl font-extrabold tracking-tight leading-tight" style="color:#000666;">
+            An agentic complaint system with evidence, control, and visibility built in.
+          </h1>
+          <p class="mt-6 text-xl leading-relaxed" style="color:#434653;">
+            TriageAI turns complaint handling into an orchestrated workflow. Intake, document understanding, classification, risk review, root-cause analysis, resolution planning, evaluation, and live traces all operate as one governed system instead of disconnected tools.
+          </p>
+          <div class="mt-10 flex flex-wrap gap-4">
+            <a href="/login" class="px-8 py-4 rounded-full font-headline font-bold" style="background:#000666;color:#ffffff;">Open the Product</a>
+            <a href="/pain-points" class="px-8 py-4 rounded-full font-headline font-bold border" style="border-color:#d0d4e6;color:#000666;background:#ffffff;">Review the Pain Points</a>
+          </div>
+        </div>
+
+        <div class="rounded-[2.5rem] p-10 shadow-2xl" style="background:linear-gradient(135deg,#000666,#1a237e);color:#ffffff;">
+          <p class="text-xs uppercase tracking-[0.22em]" style="color:#81f3e5;">System flow</p>
+          <div class="mt-8 space-y-5">
+            <div class="rounded-[1.75rem] p-5" style="background:rgba(255,255,255,0.08);">
+              <p class="font-semibold">1. Structured intake</p>
+              <p class="mt-2 text-sm" style="color:rgba(255,255,255,0.82);">Capture narrative, bank contact history, and uploaded evidence before a case is considered ready.</p>
+            </div>
+            <div class="rounded-[1.75rem] p-5" style="background:rgba(255,255,255,0.08);">
+              <p class="font-semibold">2. Document-grounded analysis</p>
+              <p class="mt-2 text-sm" style="color:rgba(255,255,255,0.82);">OCR, extraction, contradiction checks, and evidence-aware specialist agents run before supervisor decisions.</p>
+            </div>
+            <div class="rounded-[1.75rem] p-5" style="background:rgba(255,255,255,0.08);">
+              <p class="font-semibold">3. Governed decisioning</p>
+              <p class="mt-2 text-sm" style="color:rgba(255,255,255,0.82);">Routing, risk, root cause, and proposed resolution are evaluated, traced, and made reviewable for the business.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-20 grid gap-6 lg:grid-cols-3">
+        <div class="rounded-[2rem] p-8 shadow-lg" style="background:#ffffff;">
+          <h2 class="font-headline text-2xl font-bold" style="color:#000666;">Evidence-first</h2>
+          <p class="mt-4 text-sm leading-7" style="color:#434653;">Uploaded documents are parsed before downstream specialist agents act, so decisions are grounded in real artifacts instead of narrative alone.</p>
+        </div>
+        <div class="rounded-[2rem] p-8 shadow-lg" style="background:#ffffff;">
+          <h2 class="font-headline text-2xl font-bold" style="color:#000666;">Visible reasoning</h2>
+          <p class="mt-4 text-sm leading-7" style="color:#434653;">Live traces, evaluation reports, and structured judging make the system inspectable rather than opaque.</p>
+        </div>
+        <div class="rounded-[2rem] p-8 shadow-lg" style="background:#ffffff;">
+          <h2 class="font-headline text-2xl font-bold" style="color:#000666;">Business control</h2>
+          <p class="mt-4 text-sm leading-7" style="color:#434653;">Taxonomy, routing rules, document gates, and evaluation layers keep the workflow aligned with operational needs.</p>
+        </div>
+      </div>
+
+      <div class="mt-20 rounded-[2.5rem] p-10" style="background:#ffffff;">
+        <div class="grid gap-8 lg:grid-cols-4">
+          <div>
+            <p class="text-xs font-bold uppercase tracking-[0.22em]" style="color:#006a62;">Capability</p>
+            <h2 class="mt-3 font-headline text-3xl font-bold" style="color:#000666;">What the platform delivers</h2>
+          </div>
+          <div class="lg:col-span-3 grid gap-5 md:grid-cols-2">
+            <div class="rounded-[1.5rem] p-5" style="background:#f5f3ef;">
+              <p class="font-semibold" style="color:#000666;">Complaint session history</p>
+              <p class="mt-2 text-sm" style="color:#434653;">A unified view of the intake conversation, payload, and supporting evidence for every case.</p>
+            </div>
+            <div class="rounded-[1.5rem] p-5" style="background:#f5f3ef;">
+              <p class="font-semibold" style="color:#000666;">Production evaluation</p>
+              <p class="mt-2 text-sm" style="color:#434653;">System evaluation and LLM judge reports on real complaints, visible in analytics instead of hidden in the backend.</p>
+            </div>
+            <div class="rounded-[1.5rem] p-5" style="background:#f5f3ef;">
+              <p class="font-semibold" style="color:#000666;">Live trace visibility</p>
+              <p class="mt-2 text-sm" style="color:#434653;">Admins can watch node-by-node execution as a complaint is processed.</p>
+            </div>
+            <div class="rounded-[1.5rem] p-5" style="background:#f5f3ef;">
+              <p class="font-semibold" style="color:#000666;">Benchmarking framework</p>
+              <p class="mt-2 text-sm" style="color:#434653;">Weak-gold and judge-based evaluation infrastructure for measuring and improving behavior over time.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}

@@ -1,0 +1,267 @@
+{% extends "base.html" %}
+{% block title %}Past Complaints{% endblock %}
+
+{% block head %}
+<style>
+  /* Break out of base p-8 padding and fill remaining viewport */
+  .outlook-shell {
+    margin: -2rem;
+    height: calc(100vh - 56px);
+    display: flex;
+    overflow: hidden;
+  }
+  .outlook-list {
+    width: 320px;
+    min-width: 320px;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid rgb(var(--outline-variant) / 0.15);
+    overflow: hidden;
+  }
+  .outlook-detail {
+    flex: 1;
+    overflow-y: auto;
+    min-width: 0;
+  }
+  .complaint-item.selected {
+    background: rgb(var(--surface-container-lowest));
+    border-left: 3px solid rgb(var(--primary));
+  }
+  .complaint-item:not(.selected) {
+    border-left: 3px solid transparent;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="outlook-shell">
+
+  <!-- ══════ LEFT: Complaint List ══════ -->
+  <div class="outlook-list bg-surface-container-low">
+
+    <!-- List Header -->
+    <div class="px-4 py-4 border-b border-outline-variant/15 shrink-0">
+      <div class="flex items-center justify-between mb-3">
+        <h1 class="font-headline font-bold text-base text-on-surface">Past Complaints</h1>
+        <span class="text-xs font-semibold text-on-surface-variant bg-surface-container-high px-2.5 py-0.5 rounded-full">{{ total }}</span>
+      </div>
+      <a href="/complaints/new"
+         class="flex items-center justify-center gap-2 aurora-gradient text-white text-sm font-bold py-2.5 rounded-lg hover:opacity-90 transition-opacity w-full">
+        <span class="material-symbols-outlined text-sm">add</span>
+        New Complaint
+      </a>
+    </div>
+
+    <!-- Scrollable List -->
+    <div class="flex-1 overflow-y-auto">
+      {% if cases %}
+      {% for case in cases %}
+      {% set is_selected = selected_case_id == case.id %}
+      <a href="?case={{ case.id }}{% if page > 1 %}&page={{ page }}{% endif %}"
+         class="complaint-item {% if is_selected %}selected{% endif %} block px-4 py-4 hover:bg-surface-container-high/60 transition-colors border-b border-outline-variant/8">
+        <div class="flex items-start justify-between gap-2 mb-1.5">
+          <span class="text-sm font-bold text-on-surface truncate leading-snug flex-1">
+            {{ case.subject[:45] ~ '…' if case.subject and case.subject | length > 45 else (case.subject or ('Complaint #' ~ case.id[:8])) }}
+          </span>
+          <span class="text-[10px] text-on-surface-variant shrink-0 mt-0.5">
+            {{ case.created_at.strftime('%d %b') if case.created_at else '' }}
+          </span>
+        </div>
+        <p class="text-xs text-on-surface-variant truncate mb-2">
+          {{ case.product or 'General complaint' }}
+        </p>
+        <div class="flex items-center justify-between">
+          <span class="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full
+            {% if case.status in ['resolved', 'closed'] %}bg-secondary-container text-on-secondary-container
+            {% elif case.status in ['received', 'intake_complete'] %}bg-surface-container-high text-on-surface-variant
+            {% else %}bg-primary-fixed/60 text-on-primary-fixed-variant{% endif %}">
+            {% if case.status in ['received', 'intake_complete'] %}Processing{% else %}{{ case.status | replace('_', ' ') }}{% endif %}
+          </span>
+          <span class="text-[10px] text-on-surface-variant/50 flex items-center gap-1">
+            <span class="material-symbols-outlined text-xs">chat</span>
+            {{ case.conversation_history | length }}
+          </span>
+        </div>
+      </a>
+      {% endfor %}
+
+      <!-- Pagination inside list -->
+      {% if total_pages > 1 %}
+      <div class="px-4 py-3 flex items-center justify-between border-t border-outline-variant/15">
+        {% if page > 1 %}
+        <a href="?page={{ page - 1 }}" class="text-xs font-semibold text-primary hover:underline flex items-center gap-1">
+          <span class="material-symbols-outlined text-sm">chevron_left</span> Prev
+        </a>
+        {% else %}<span></span>{% endif %}
+        <span class="text-xs text-on-surface-variant">{{ page }} / {{ total_pages }}</span>
+        {% if page < total_pages %}
+        <a href="?page={{ page + 1 }}" class="text-xs font-semibold text-primary hover:underline flex items-center gap-1">
+          Next <span class="material-symbols-outlined text-sm">chevron_right</span>
+        </a>
+        {% else %}<span></span>{% endif %}
+      </div>
+      {% endif %}
+
+      {% else %}
+      <!-- Empty state -->
+      <div class="flex flex-col items-center justify-center h-full py-16 px-6 text-center">
+        <div class="w-14 h-14 aurora-gradient rounded-full flex items-center justify-center mb-4">
+          <span class="material-symbols-outlined text-2xl text-white">history</span>
+        </div>
+        <p class="text-sm font-bold text-on-surface mb-1">No complaints yet</p>
+        <p class="text-xs text-on-surface-variant mb-6">Submit a complaint to see it here.</p>
+        <a href="/complaints/new"
+           class="aurora-gradient text-white text-xs font-bold px-5 py-2.5 rounded-full hover:opacity-90 transition-opacity">
+          Start Complaint
+        </a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ══════ RIGHT: Detail Panel ══════ -->
+  <div class="outlook-detail bg-background">
+    {% if selected_case %}
+    <div class="p-8 space-y-6">
+
+      <!-- Detail Header -->
+      <div class="flex items-start justify-between gap-4">
+        <div class="min-w-0">
+          <h2 class="text-2xl font-headline font-extrabold text-on-surface tracking-tight">
+            {{ selected_case.subject or ('Complaint #' ~ selected_case.id[:8]) }}
+          </h2>
+          <p class="text-sm text-on-surface-variant mt-1 flex items-center gap-3 flex-wrap">
+            <span class="font-mono">#{{ selected_case.id[:12] }}</span>
+            {% if selected_case.created_at %}
+            <span class="flex items-center gap-1">
+              <span class="material-symbols-outlined text-sm">schedule</span>
+              {{ selected_case.created_at.strftime('%b %d, %Y') }}
+            </span>
+            {% endif %}
+            {% if selected_case.product %}
+            <span class="flex items-center gap-1">
+              <span class="material-symbols-outlined text-sm">category</span>
+              {{ selected_case.product }}
+            </span>
+            {% endif %}
+          </p>
+        </div>
+        <span class="px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide shrink-0
+          {% if selected_case.status in ['resolved', 'closed'] %}bg-secondary-container text-on-secondary-container
+          {% elif selected_case.status in ['received', 'intake_complete'] %}bg-surface-container-high text-on-surface-variant
+          {% else %}bg-primary-fixed/60 text-on-primary-fixed-variant{% endif %}">
+          {{ selected_case.status | replace('_', ' ') }}
+        </span>
+      </div>
+
+      <!-- Quick Stats -->
+      <div class="grid grid-cols-3 gap-4">
+        <div class="bg-surface-container-lowest rounded-xl p-4">
+          <div class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-1">Product</div>
+          <div class="text-sm font-semibold text-on-surface">{{ selected_case.product | replace('_', ' ') | title if selected_case.product else '—' }}</div>
+        </div>
+        <div class="bg-surface-container-lowest rounded-xl p-4">
+          <div class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-1">Issue</div>
+          <div class="text-sm font-semibold text-on-surface">{{ selected_case.issue_type | replace('_', ' ') | title if selected_case.issue_type else '—' }}</div>
+        </div>
+        <div class="bg-surface-container-lowest rounded-xl p-4">
+          <div class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-1">Sub-issue</div>
+          <div class="text-sm font-semibold text-on-surface">{{ selected_case.sub_issue | replace('_', ' ') | title if selected_case.sub_issue else '—' }}</div>
+        </div>
+      </div>
+
+      <!-- Conversation Transcript -->
+      <div class="bg-surface-container-lowest rounded-xl p-6 border border-outline-variant/15">
+        <div class="flex items-center gap-3 mb-5">
+          <div class="w-9 h-9 bg-tertiary-container rounded-lg flex items-center justify-center">
+            <span class="material-symbols-outlined text-on-tertiary-container text-xl">forum</span>
+          </div>
+          <div>
+            <h3 class="font-headline font-bold text-base text-on-surface">Conversation Transcript</h3>
+            <p class="text-xs text-on-surface-variant">Saved intake session</p>
+          </div>
+        </div>
+        {% if selected_case.conversation_history %}
+        <div class="space-y-3 max-h-96 overflow-y-auto pr-1">
+          {% for turn in selected_case.conversation_history %}
+          {% set role = turn.get('role', '') %}
+          {% set msg = turn.get('message', '') %}
+          {% if role == 'user' %}
+          <div class="flex justify-end">
+            <div class="max-w-[80%] rounded-xl bg-primary text-white px-4 py-3 text-sm whitespace-pre-wrap shadow-sm">{{ msg }}</div>
+          </div>
+          {% else %}
+          <div class="flex justify-start">
+            <div class="max-w-[80%] rounded-xl bg-surface-container-high text-on-surface px-4 py-3 text-sm whitespace-pre-wrap border border-outline-variant/20">{{ msg }}</div>
+          </div>
+          {% endif %}
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-sm text-on-surface-variant">No transcript available for this complaint.</p>
+        {% endif %}
+      </div>
+
+      <!-- Documents -->
+      <div class="grid grid-cols-1 gap-6">
+
+        <!-- Supporting Documents -->
+        <div class="bg-surface-container-lowest rounded-xl p-6 border border-outline-variant/15">
+          <div class="flex items-center gap-3 mb-4">
+            <div class="w-9 h-9 bg-primary-fixed rounded-lg flex items-center justify-center">
+              <span class="material-symbols-outlined text-primary text-xl">attach_file</span>
+            </div>
+            <div>
+              <h3 class="font-headline font-bold text-base text-on-surface">Documents</h3>
+              <p class="text-xs text-on-surface-variant">Supporting files</p>
+            </div>
+          </div>
+          {% if selected_case.supporting_documents %}
+          <div class="space-y-2">
+            {% for doc in selected_case.supporting_documents %}
+            <div class="bg-surface-container-low rounded-lg p-3 flex items-center gap-3">
+              <span class="material-symbols-outlined text-on-surface-variant text-xl">description</span>
+              <div class="min-w-0">
+                <div class="text-sm font-semibold text-on-surface truncate">{{ doc.name or doc.filename or doc.title or ('Document ' ~ loop.index) }}</div>
+                {% if doc.type or doc.mime_type %}
+                <div class="text-xs text-on-surface-variant">{{ doc.type or doc.mime_type }}</div>
+                {% endif %}
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% elif selected_case.has_supporting_docs %}
+          <p class="text-sm text-on-surface-variant">Documents were indicated but metadata is not stored yet.</p>
+          {% else %}
+          <p class="text-sm text-on-surface-variant">No documents were attached to this complaint.</p>
+          {% endif %}
+        </div>
+      </div>
+
+    </div>
+    {% elif cases %}
+    <!-- No selection yet (edge case) -->
+    <div class="flex flex-col items-center justify-center h-full text-center px-12">
+      <span class="material-symbols-outlined text-5xl text-on-surface-variant/30 mb-4">inbox</span>
+      <p class="text-base font-bold text-on-surface-variant/50">Select a complaint to view details</p>
+    </div>
+    {% else %}
+    <!-- No complaints at all -->
+    <div class="flex flex-col items-center justify-center h-full text-center px-12">
+      <div class="w-16 h-16 aurora-gradient rounded-full flex items-center justify-center mb-5">
+        <span class="material-symbols-outlined text-3xl text-white">history</span>
+      </div>
+      <h3 class="font-headline text-xl font-bold text-on-surface mb-2">No complaint sessions yet</h3>
+      <p class="text-sm text-on-surface-variant max-w-xs mb-6">
+        Once you submit a complaint, the saved intake conversation and payload will appear here.
+      </p>
+      <a href="/complaints/new"
+         class="inline-flex items-center gap-2 aurora-gradient text-white px-7 py-3 rounded-full font-bold text-sm hover:opacity-90 transition-all">
+        <span class="material-symbols-outlined text-lg">add</span> Start New Complaint
+      </a>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

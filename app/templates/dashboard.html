@@ -1,0 +1,242 @@
+{% extends "base.html" %}
+{% block title %}{% if user and user.role in ('admin', 'team') %}Intelligence Canvas{% else %}My Complaints{% endif %}{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="flex justify-between items-end mb-10">
+  <div>
+    <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant mb-1">
+      {% if user and user.role in ('admin', 'team') %}System-Wide Portfolio{% elif user and user.company %}{{ user.company }}{% else %}Your Portfolio{% endif %}
+    </p>
+    <h1 class="text-3xl font-headline font-extrabold tracking-tight text-on-surface">
+      {% if user and user.role in ('admin', 'team') %}Intelligence Canvas{% else %}My Complaints{% endif %}
+    </h1>
+    <p class="text-on-surface-variant mt-1 text-sm">
+      {% if user and user.role in ('admin', 'team') %}Operationalizing empathetic resolution at scale.
+      {% else %}Track your complaint submissions and their resolution status.{% endif %}
+    </p>
+  </div>
+
+  {% if user and user.role in ('admin', 'team') %}
+  <!-- KPI Tiles -->
+  <div class="flex items-center gap-4 text-sm font-medium text-on-surface-variant">
+    <div class="flex items-center gap-2 bg-surface-container-low px-4 py-2 rounded-lg">
+      <span class="w-2.5 h-2.5 rounded-full bg-secondary"></span>
+      <span>{{ total }} Active</span>
+    </div>
+    <div class="flex items-center gap-2 bg-surface-container-low px-4 py-2 rounded-lg">
+      <span class="w-2.5 h-2.5 rounded-full bg-error"></span>
+      <span>{{ critical_count }} Critical</span>
+    </div>
+    <a href="/complaints/new"
+       class="aurora-gradient text-white px-5 py-2 rounded-full text-sm font-semibold flex items-center gap-2 hover:opacity-90 transition-all shadow-md">
+      <span class="material-symbols-outlined text-sm">add</span>
+      New
+    </a>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Filters / Tabs row (admin only) -->
+{% if user and user.role in ('admin', 'team') %}
+<div class="flex items-center justify-between mb-6">
+  <div class="flex gap-2">
+    <button class="px-4 py-2 bg-primary text-on-primary text-sm font-semibold rounded-lg">All</button>
+    <button class="px-4 py-2 bg-surface-container-low text-on-surface text-sm font-medium rounded-lg hover:bg-surface-container-high transition-colors">Active</button>
+    <button class="px-4 py-2 bg-surface-container-low text-on-surface text-sm font-medium rounded-lg hover:bg-surface-container-high transition-colors">Resolved</button>
+    <button class="px-4 py-2 bg-surface-container-low text-on-surface text-sm font-medium rounded-lg hover:bg-surface-container-high transition-colors">Critical</button>
+  </div>
+  <div class="flex gap-2">
+    <button class="px-4 py-2 bg-surface-container-low text-on-surface text-sm font-medium rounded-lg hover:bg-surface-container-high transition-colors flex items-center gap-2">
+      <span class="material-symbols-outlined text-sm">filter_list</span> Filters
+    </button>
+    <button class="px-4 py-2 bg-surface-container-low text-on-surface text-sm font-medium rounded-lg hover:bg-surface-container-high transition-colors flex items-center gap-2">
+      <span class="material-symbols-outlined text-sm">download</span> Export
+    </button>
+  </div>
+</div>
+{% endif %}
+
+<!-- Complaints Table -->
+<div class="bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm">
+  <!-- Table Header -->
+  <div class="{% if user and user.role in ('admin', 'team') %}grid grid-cols-12{% else %}grid grid-cols-12{% endif %} gap-4 px-6 py-4
+              bg-surface-container text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
+    <div class="col-span-2">Case ID</div>
+    {% if user and user.role in ('admin', 'team') %}
+    <div class="col-span-3">Subject / Product</div>
+    <div class="col-span-1">Status</div>
+    <div class="col-span-2">Risk Level</div>
+    <div class="col-span-2">Assigned Team</div>
+    <div class="col-span-1">AI Conf.</div>
+    <div class="col-span-1 text-right">Action</div>
+    {% else %}
+    <div class="col-span-7">Subject / Product</div>
+    <div class="col-span-3">Status</div>
+    {% endif %}
+  </div>
+
+  {% if cases %}
+  {% for case in cases %}
+
+  {% if user and user.role in ('admin', 'team') %}
+  <a href="/complaints/{{ case.id }}"
+     class="grid grid-cols-12 gap-4 px-6 py-4 items-center table-row-hover border-t border-outline-variant/10 block hover:no-underline">
+    <!-- Case ID -->
+    <div class="col-span-2">
+      <span class="font-mono text-xs text-primary font-bold">#{{ case.public_case_id or case.id[:12] }}</span>
+    </div>
+    <!-- Subject -->
+    <div class="col-span-3">
+      <div class="text-sm font-semibold text-on-surface leading-tight">{{ case.subject }}</div>
+      {% if case.product %}
+      <div class="text-[11px] text-on-surface-variant mt-0.5">{{ case.product }}</div>
+      {% endif %}
+    </div>
+    <!-- Status -->
+    <div class="col-span-1">
+      {% set status_colors = {
+        "routed":             "bg-tertiary-container/60 text-on-tertiary-container",
+        "reviewed":           "bg-primary-fixed text-on-primary-fixed-variant",
+        "classified":         "bg-secondary-container text-on-secondary-container",
+        "risk_assessed":      "bg-secondary-container text-on-secondary-container",
+        "resolution_proposed":"bg-primary-fixed text-on-primary-fixed-variant",
+        "compliance_checked": "bg-primary-fixed text-on-primary-fixed-variant",
+        "intake_complete":    "bg-surface-container-high text-on-surface-variant",
+      } %}
+      <span class="px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wide
+                   {{ status_colors.get(case.status, 'bg-surface-container-high text-on-surface-variant') }}">
+        {{ case.status | replace('_', ' ') }}
+      </span>
+    </div>
+    <!-- Risk -->
+    <div class="col-span-2 flex items-center gap-2">
+      {% if case.risk_level %}
+        <span class="status-dot {{ case.risk_level }}"></span>
+        <span class="text-xs font-bold uppercase
+                     {% if case.risk_level == 'critical' %}text-error
+                     {% elif case.risk_level == 'high' %}text-error/70
+                     {% elif case.risk_level == 'low' %}text-secondary
+                     {% else %}text-on-tertiary-container{% endif %}">
+          {{ case.risk_level }}
+        </span>
+      {% else %}
+        <span class="text-xs text-on-surface-variant/40">—</span>
+      {% endif %}
+    </div>
+    <!-- Assigned Team -->
+    <div class="col-span-2">
+      {% if case.routed_to %}
+      <span class="text-xs text-on-surface-variant">{{ case.routed_to | replace('_', ' ') | title }}</span>
+      {% else %}
+      <span class="text-xs text-on-surface-variant/40">Unassigned</span>
+      {% endif %}
+    </div>
+    <!-- Confidence -->
+    <div class="col-span-1">
+      {% if case.confidence is not none %}
+      <div class="flex items-center gap-2">
+        <div class="confidence-bar w-10">
+          <div class="confidence-bar-fill
+                      {% if case.confidence >= 0.8 %}bg-secondary
+                      {% elif case.confidence >= 0.6 %}bg-primary
+                      {% else %}bg-error{% endif %}"
+               style="width: {{ (case.confidence * 100) | int }}%"></div>
+        </div>
+        <span class="text-[10px] font-mono text-on-surface-variant">{{ (case.confidence * 100) | int }}%</span>
+      </div>
+      {% else %}
+      <span class="text-xs text-on-surface-variant/40">—</span>
+      {% endif %}
+    </div>
+    <!-- Actions -->
+    <div class="col-span-1 text-right">
+      <span class="material-symbols-outlined text-on-surface-variant/50 text-lg hover:text-primary transition-colors">chevron_right</span>
+    </div>
+  </a>
+
+  {% else %}
+  <!-- User view -->
+  <div class="grid grid-cols-12 gap-4 px-6 py-4 items-center border-t border-outline-variant/10">
+    <div class="col-span-2">
+      <span class="font-mono text-xs text-primary font-bold">#{{ case.public_case_id or case.id[:12] }}</span>
+    </div>
+    <div class="col-span-7">
+      <div class="text-sm font-semibold text-on-surface">{{ case.subject }}</div>
+      {% if case.product %}
+      <div class="text-[11px] text-on-surface-variant mt-0.5">{{ case.product }}</div>
+      {% endif %}
+    </div>
+    <div class="col-span-3">
+      {% set status_colors = {
+        "routed":             "bg-tertiary-container/60 text-on-tertiary-container",
+        "reviewed":           "bg-primary-fixed text-on-primary-fixed-variant",
+        "classified":         "bg-secondary-container text-on-secondary-container",
+        "risk_assessed":      "bg-secondary-container text-on-secondary-container",
+        "resolution_proposed":"bg-primary-fixed text-on-primary-fixed-variant",
+        "compliance_checked": "bg-primary-fixed text-on-primary-fixed-variant",
+        "intake_complete":    "bg-surface-container-high text-on-surface-variant",
+      } %}
+      <span class="px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wide
+                   {{ status_colors.get(case.status, 'bg-surface-container-high text-on-surface-variant') }}">
+        {{ case.status | replace('_', ' ') }}
+      </span>
+    </div>
+  </div>
+  {% endif %}
+
+  {% endfor %}
+
+  {% else %}
+  <!-- Empty state -->
+  <div class="py-20 text-center">
+    <div class="w-16 h-16 aurora-gradient rounded-full flex items-center justify-center mx-auto mb-4 opacity-30">
+      <span class="material-symbols-outlined text-white text-3xl">inbox</span>
+    </div>
+    <p class="text-lg font-headline font-bold text-on-surface-variant/60">No complaints yet</p>
+    <p class="text-sm text-on-surface-variant/40 mt-1">
+      {% if user and user.role in ('admin', 'team') %}Submit a complaint via the API to see it here.
+      {% else %}Lodge a complaint to get started.{% endif %}
+    </p>
+    {% if user and user.role in ('admin', 'team') %}
+    <p class="text-xs text-on-surface-variant/30 mt-3 font-mono">POST /api/v1/complaints</p>
+    {% else %}
+    <a href="/complaints/new"
+       class="mt-6 inline-flex items-center gap-2 aurora-gradient text-white px-6 py-3 rounded-full font-bold text-sm hover:opacity-90 transition-all">
+      <span class="material-symbols-outlined text-sm">edit_square</span>
+      Lodge a Complaint
+    </a>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+
+<!-- Pagination -->
+{% if total_pages > 1 %}
+<div class="flex items-center justify-between mt-6">
+  <p class="text-xs text-on-surface-variant">
+    Showing {{ ((page - 1) * limit) + 1 }}–{{ [page * limit, total] | min }} of {{ total }} complaints
+  </p>
+  <div class="flex gap-1">
+    {% if page > 1 %}
+    <a href="/?page={{ page - 1 }}"
+       class="px-3 py-1.5 rounded-lg text-xs bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant transition-colors">Prev</a>
+    {% endif %}
+    {% for p in range(1, total_pages + 1) %}
+      {% if p == page %}
+      <span class="px-3 py-1.5 rounded-lg text-xs aurora-gradient text-white font-bold">{{ p }}</span>
+      {% elif p <= 3 or p >= total_pages - 1 or (p >= page - 1 and p <= page + 1) %}
+      <a href="/?page={{ p }}"
+         class="px-3 py-1.5 rounded-lg text-xs bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant transition-colors">{{ p }}</a>
+      {% elif p == 4 or p == total_pages - 2 %}
+      <span class="px-2 py-1.5 text-xs text-on-surface-variant/50">…</span>
+      {% endif %}
+    {% endfor %}
+    {% if page < total_pages %}
+    <a href="/?page={{ page + 1 }}"
+       class="px-3 py-1.5 rounded-lg text-xs bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant transition-colors">Next</a>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+{% endblock %}

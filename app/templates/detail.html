@@ -1,0 +1,492 @@
+{% extends "base.html" %}
+{% block title %}Case Detail{% endblock %}
+
+{% block content %}
+{% if case is none %}
+<div class="py-20 text-center">
+  <div class="w-16 h-16 bg-surface-container-high rounded-full flex items-center justify-center mx-auto mb-4">
+    <span class="material-symbols-outlined text-3xl text-on-surface-variant/40">search_off</span>
+  </div>
+  <p class="text-lg font-headline font-bold text-on-surface-variant/60">
+    {% if access_denied %}Access denied{% else %}Case not found{% endif %}
+  </p>
+  <a href="/app" class="text-sm text-primary hover:underline mt-3 inline-block font-semibold">← Back to dashboard</a>
+</div>
+{% else %}
+
+<!-- Back Navigation -->
+<div class="mb-6 flex items-center gap-2">
+  <a href="{% if user.role == 'team' %}/app{% else %}/queue{% endif %}" class="inline-flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary transition-colors">
+    <span class="material-symbols-outlined text-lg">arrow_back</span>
+    {% if user.role == 'user' %}My Complaints{% elif user.role == 'team' %}My Queue{% else %}Queue{% endif %}
+  </a>
+  <span class="text-on-surface-variant/30">/</span>
+  <span class="text-xs font-mono text-primary font-bold">#{{ case.public_case_id or case.id[:12] }}</span>
+</div>
+
+<!-- Page Header -->
+<div class="flex items-start justify-between mb-10">
+  <div>
+    <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant mb-1">AI Agent Workspace</p>
+    <h1 class="text-3xl font-headline font-extrabold tracking-tight text-on-surface">Case #{{ case.public_case_id or case.id[:12] }}</h1>
+    <p class="text-sm text-on-surface-variant mt-1.5 flex items-center gap-3">
+      {% if case.submitted_at %}
+      <span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">schedule</span>{{ case.submitted_at }}</span>
+      {% endif %}
+      {% if case.routed_to %}
+      <span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">group</span>{{ case.routed_to | replace('_', ' ') | title }}</span>
+      {% endif %}
+    </p>
+  </div>
+  <div class="flex items-center gap-3">
+    {% if case.risk_assessment and case.risk_assessment.risk_level %}
+    {% set rl = case.risk_assessment.risk_level %}
+    <span class="px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest
+                 {% if rl == 'critical' %}bg-error text-on-error
+                 {% elif rl == 'high' %}bg-error/15 text-error
+                 {% elif rl == 'low' %}bg-secondary-container text-on-secondary-container
+                 {% else %}bg-tertiary-container text-on-tertiary-container{% endif %}">
+      {{ rl }} Risk
+    </span>
+    {% endif %}
+    {% if run_id and user.role == 'admin' %}
+    <a href="/trace/{{ run_id }}"
+       class="flex items-center gap-2 px-4 py-2 rounded-lg aurora-gradient text-white text-sm font-semibold hover:opacity-90 transition-all shadow-md">
+      <span class="material-symbols-outlined text-lg">hub</span>
+      View Trace
+    </a>
+    {% endif %}
+  </div>
+</div>
+
+{% if user.role == 'admin' %}
+<div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+  <div class="bg-surface-container-lowest rounded-xl p-5 shadow-sm border-b-2 border-secondary">
+    <div class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-2">Total LLM Cost</div>
+    <div class="text-3xl font-headline font-extrabold text-on-surface">${{ "%.2f"|format(case.cost_estimate_usd or 0.0) }}</div>
+    <p class="mt-2 text-xs text-on-surface-variant">Complaint-level spend rolled up across workflow execution.</p>
+  </div>
+  <div class="bg-surface-container-lowest rounded-xl p-5 shadow-sm border-b-2 border-primary">
+    <div class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-2">Total Tokens</div>
+    <div class="text-3xl font-headline font-extrabold text-on-surface">{% if case.token_total %}{{ "{:,}".format(case.token_total) }}{% else %}—{% endif %}</div>
+    <p class="mt-2 text-xs text-on-surface-variant">Useful for understanding prompt inflation and retrieval-heavy flows.</p>
+  </div>
+  <div class="bg-surface-container-lowest rounded-xl p-5 shadow-sm border-b-2 border-primary-container">
+    <div class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-2">LLM Calls</div>
+    <div class="text-3xl font-headline font-extrabold text-on-surface">
+      {% if case.latest_run and case.latest_run.llm_call_count_available %}
+      {{ case.latest_run.llm_call_count }}
+      {% else %}
+      —
+      {% endif %}
+    </div>
+    <p class="mt-2 text-xs text-on-surface-variant">
+      {% if case.latest_run and not case.latest_run.llm_call_count_available %}
+      Not available for historical aggregate-only runs.
+      {% else %}
+      Latest workflow run only.
+      {% endif %}
+    </p>
+  </div>
+  <div class="bg-surface-container-lowest rounded-xl p-5 shadow-sm border-b-2 border-on-tertiary-container">
+    <div class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-2">Latest Run Cost</div>
+    <div class="text-3xl font-headline font-extrabold text-on-surface">${{ "%.2f"|format(case.latest_run.cost_estimate_total if case.latest_run else 0.0) }}</div>
+    <p class="mt-2 text-xs text-on-surface-variant">Use trace for step-level breakdown.</p>
+  </div>
+</div>
+{% endif %}
+
+<div class="grid grid-cols-12 gap-6">
+
+  <!-- Left Column: Narrative + Root Cause + Resolution -->
+  <div class="col-span-8 space-y-6">
+
+    <!-- Consumer Narrative -->
+    <div class="bg-surface-container-lowest rounded-xl p-8 shadow-sm">
+      <div class="flex items-center gap-3 mb-5">
+        <div class="w-9 h-9 bg-primary-fixed rounded-lg flex items-center justify-center">
+          <span class="material-symbols-outlined text-primary text-xl">description</span>
+        </div>
+        <div class="flex-1">
+          <h2 class="font-headline font-bold text-lg text-on-surface">Consumer Narrative</h2>
+        </div>
+        <span class="px-2.5 py-1 rounded-full text-[9px] font-bold uppercase bg-tertiary-container text-white/85 tracking-wide">PII Redacted</span>
+      </div>
+      <p class="text-sm text-on-surface/80 leading-relaxed whitespace-pre-wrap">{{ case.consumer_narrative }}</p>
+    </div>
+
+    {% if case.intake_session_transcript is mapping and case.intake_session_transcript.get('conversation_history') %}
+    <div class="bg-surface-container-lowest rounded-xl p-8 shadow-sm border border-outline-variant/15">
+      <div class="flex items-center gap-3 mb-5">
+        <div class="w-9 h-9 bg-tertiary-container rounded-lg flex items-center justify-center">
+          <span class="material-symbols-outlined text-on-tertiary-container text-xl">forum</span>
+        </div>
+        <div class="flex-1">
+          <h2 class="font-headline font-bold text-lg text-on-surface">Intake session</h2>
+          <p class="text-xs text-on-surface-variant mt-0.5">Transcript from your lodge chat (saved at submit).</p>
+        </div>
+      </div>
+      <div class="space-y-3 max-h-[28rem] overflow-y-auto pr-1">
+        {% for turn in case.intake_session_transcript.conversation_history %}
+        {% set role = turn.get('role', '') %}
+        {% set msg = turn.get('message', '') %}
+        {% if role == 'user' %}
+        <div class="flex justify-end">
+          <div class="max-w-[85%] rounded-xl bg-primary text-white px-4 py-3 text-sm whitespace-pre-wrap shadow-sm">{{ msg }}</div>
+        </div>
+        {% else %}
+        <div class="flex justify-start">
+          <div class="max-w-[85%] rounded-xl bg-surface-container-high text-on-surface px-4 py-3 text-sm whitespace-pre-wrap border border-outline-variant/20">{{ msg }}</div>
+        </div>
+        {% endif %}
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Root Cause Hypothesis -->
+    {% if case.root_cause_hypothesis %}
+    <div class="bg-surface-container-lowest rounded-xl p-8 shadow-sm border-l-4 border-secondary">
+      <div class="flex items-center gap-3 mb-5">
+        <div class="w-9 h-9 bg-secondary-container rounded-lg flex items-center justify-center">
+          <span class="material-symbols-outlined text-on-secondary-container text-xl">psychology</span>
+        </div>
+        <h2 class="font-headline font-bold text-lg text-on-surface">Root Cause Hypothesis</h2>
+      </div>
+      {% set rc = case.root_cause_hypothesis %}
+      {% if rc.root_cause_display_label or rc.root_cause_category %}
+      <div class="text-base font-bold text-on-surface mb-1">{{ rc.root_cause_display_label or rc.root_cause_category }}</div>
+      {% if rc.root_cause_category and rc.root_cause_category != (rc.root_cause_display_label or rc.root_cause_category) %}
+      <div class="text-[10px] uppercase tracking-widest text-on-surface-variant mb-3 font-semibold">{{ rc.root_cause_category }}</div>
+      {% endif %}
+      {% endif %}
+      {% if rc.reasoning %}
+      <div class="bg-surface-container-low rounded-lg p-4">
+        <p class="text-sm text-on-surface/70 italic leading-relaxed">{{ rc.reasoning }}</p>
+      </div>
+      {% endif %}
+      {% if rc.controls_to_check %}
+      <div class="mt-4">
+        <div class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-2">What To Check</div>
+        <div class="flex flex-wrap gap-2">
+          {% for control in rc.controls_to_check %}
+          <span class="px-2.5 py-1 rounded-full bg-surface-container-low text-xs text-on-surface">{{ control }}</span>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+      {% if rc.confidence %}
+      <div class="mt-3 flex items-center gap-2">
+        <div class="confidence-bar w-24">
+          <div class="confidence-bar-fill bg-secondary" style="width: {{ (rc.confidence * 100) | int }}%"></div>
+        </div>
+        <span class="text-xs text-on-surface-variant">{{ (rc.confidence * 100) | int }}% confidence</span>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Proposed Resolution -->
+    {% if case.resolution %}
+    <div class="bg-surface-container-lowest rounded-xl p-8 shadow-sm border-l-4 border-primary">
+      <div class="flex items-center gap-3 mb-5">
+        <div class="w-9 h-9 aurora-gradient rounded-lg flex items-center justify-center">
+          <span class="material-symbols-outlined text-white text-xl">task_alt</span>
+        </div>
+        <h2 class="font-headline font-bold text-lg text-on-surface">Proposed Resolution</h2>
+      </div>
+      {% set res = case.resolution %}
+      <div class="grid grid-cols-2 gap-4 mb-5">
+        <div class="bg-surface-container-low rounded-lg p-4">
+          <div class="text-[10px] uppercase tracking-widest text-on-surface-variant mb-1 font-bold">Recommended Action</div>
+          <div class="text-sm font-semibold text-on-surface">{{ res.recommended_action | replace('_', ' ') | title }}</div>
+        </div>
+        <div class="bg-surface-container-low rounded-lg p-4">
+          <div class="text-[10px] uppercase tracking-widest text-on-surface-variant mb-1 font-bold">Target Timeline</div>
+          <div class="text-sm font-semibold text-on-surface">{{ res.estimated_resolution_days or '—' }} days</div>
+        </div>
+      </div>
+      {% if res.monetary_amount %}
+      <div class="bg-surface-container-low rounded-lg p-4 mb-4">
+        <div class="text-[10px] uppercase tracking-widest text-on-surface-variant mb-1 font-bold">Monetary Amount</div>
+        <div class="text-2xl font-headline font-bold text-primary">${{ "%.2f" | format(res.monetary_amount) }}</div>
+      </div>
+      {% endif %}
+      {% if res.description %}
+      <p class="text-sm text-on-surface/70 leading-relaxed">{{ res.description }}</p>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Right Column -->
+  <div class="col-span-4 space-y-5">
+
+    <!-- AI Classification -->
+    {% if case.classification %}
+    {% set cls = case.classification %}
+    <div class="bg-surface-container-lowest rounded-xl p-6 shadow-sm">
+      <div class="flex items-center gap-2 mb-4">
+        <span class="material-symbols-outlined text-primary">category</span>
+        <h2 class="font-headline font-bold text-on-surface">AI Classification</h2>
+      </div>
+      <div class="text-base font-headline font-bold text-on-surface mb-4">
+        {{ cls.product_category | replace('_', ' ') | title }}
+      </div>
+      <div class="space-y-3">
+        <div class="flex justify-between items-center text-sm">
+          <span class="text-on-surface-variant">Confidence</span>
+          <div class="flex items-center gap-2">
+            <div class="confidence-bar w-16">
+              <div class="confidence-bar-fill
+                          {% if cls.confidence and cls.confidence >= 0.8 %}bg-secondary
+                          {% elif cls.confidence and cls.confidence >= 0.6 %}bg-primary
+                          {% else %}bg-error{% endif %}"
+                   style="width: {{ (cls.confidence * 100) | int if cls.confidence else 0 }}%"></div>
+            </div>
+            <span class="font-mono font-bold text-xs
+                         {% if cls.confidence and cls.confidence >= 0.8 %}text-secondary
+                         {% elif cls.confidence and cls.confidence >= 0.6 %}text-primary
+                         {% else %}text-error{% endif %}">
+              {{ (cls.confidence * 100) | int if cls.confidence else '—' }}%
+            </span>
+          </div>
+        </div>
+        <div class="flex justify-between text-sm">
+          <span class="text-on-surface-variant">Issue Type</span>
+          <span class="text-on-surface text-xs font-semibold">{{ cls.issue_type | replace('_', ' ') | title if cls.issue_type else '—' }}</span>
+        </div>
+        {% if cls.sub_issue %}
+        <div class="flex justify-between text-sm">
+          <span class="text-on-surface-variant">Sub-issue</span>
+          <span class="text-on-surface text-xs">{{ cls.sub_issue }}</span>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Risk Assessment -->
+    {% if case.risk_assessment %}
+    {% set risk = case.risk_assessment %}
+    <div class="bg-surface-container-lowest rounded-xl p-6 shadow-sm">
+      <div class="flex items-center gap-2 mb-4">
+        <span class="material-symbols-outlined text-error">security</span>
+        <h2 class="font-headline font-bold text-on-surface">Risk Assessment</h2>
+      </div>
+      {% if risk.risk_level in ['critical', 'high'] %}
+      <div class="p-3 bg-error/8 border-l-2 border-error rounded-lg mb-4">
+        <div class="text-xs font-bold uppercase text-error">⚠ {{ risk.risk_level | upper }} RISK</div>
+        {% if risk.regulatory_risk %}
+        <div class="text-[10px] text-error/70 mt-0.5">Regulatory review recommended</div>
+        {% endif %}
+      </div>
+      {% endif %}
+      <div class="space-y-3">
+        <div>
+          <div class="flex justify-between text-sm mb-1.5">
+            <span class="text-on-surface-variant">Risk Score</span>
+            <span class="font-mono font-bold text-on-surface">{{ risk.risk_score }}/100</span>
+          </div>
+          <div class="confidence-bar h-2">
+            <div class="confidence-bar-fill
+                        {% if risk.risk_score and risk.risk_score >= 75 %}bg-error
+                        {% elif risk.risk_score and risk.risk_score >= 50 %}bg-on-tertiary-container
+                        {% else %}bg-secondary{% endif %}"
+                 style="width: {{ risk.risk_score or 0 }}%"></div>
+          </div>
+        </div>
+        {% if risk.financial_impact_estimate %}
+        <div class="flex justify-between text-sm">
+          <span class="text-on-surface-variant">Financial Impact</span>
+          <span class="text-on-surface font-semibold">${{ "%.2f" | format(risk.financial_impact_estimate) }}</span>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    {% if case.document_gate_result or case.document_consistency %}
+    <div class="bg-surface-container-lowest rounded-xl p-6 shadow-sm">
+      <div class="flex items-center gap-2 mb-4">
+        <span class="material-symbols-outlined text-primary">description</span>
+        <h2 class="font-headline font-bold text-on-surface">Document Grounding</h2>
+      </div>
+      {% if case.document_gate_result %}
+      <div class="text-sm text-on-surface mb-3">
+        Gate status: <span class="font-semibold">{{ case.document_gate_result.status or 'unknown' }}</span>
+      </div>
+      {% endif %}
+      {% if case.document_consistency and case.document_consistency.status %}
+      <div class="text-sm text-on-surface mb-3">
+        Consistency: <span class="font-semibold">{{ case.document_consistency.status }}</span>
+      </div>
+      {% endif %}
+      {% if case.document_consistency and case.document_consistency.conflicts %}
+      <div class="space-y-3">
+        {% for conflict in case.document_consistency.conflicts %}
+        <div class="rounded-lg bg-error/8 border border-error/20 p-3">
+          <div class="text-xs uppercase font-bold text-error mb-1">{{ conflict.field | replace('_', ' ') }}</div>
+          <div class="text-xs text-on-surface-variant">Narrative: {{ conflict.narrative | join(', ') }}</div>
+          <div class="text-xs text-on-surface-variant">Documents: {{ conflict.documents | join(', ') }}</div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Compliance Flags -->
+    {% if case.compliance_flags %}
+    <div class="bg-surface-container-lowest rounded-xl p-6 shadow-sm">
+      <div class="flex items-center gap-2 mb-4">
+        <span class="material-symbols-outlined text-secondary">gavel</span>
+        <h2 class="font-headline font-bold text-on-surface">Compliance</h2>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        {% for flag in case.compliance_flags %}
+        <span class="px-2.5 py-1 bg-surface-container-high rounded-full text-[10px] font-bold text-on-surface-variant uppercase tracking-wide">
+          {{ flag }}
+        </span>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Routing -->
+    {% if case.routed_to %}
+    <div class="bg-surface-container-lowest rounded-xl p-6 shadow-sm">
+      <div class="flex items-center gap-2 mb-4">
+        <span class="material-symbols-outlined text-on-tertiary-container">alt_route</span>
+        <h2 class="font-headline font-bold text-on-surface">Routing</h2>
+      </div>
+      <div class="bg-surface-container-low rounded-lg p-4 flex items-center gap-3">
+        <div class="w-10 h-10 rounded-lg bg-secondary-container flex items-center justify-center">
+          <span class="material-symbols-outlined text-on-secondary-container">group</span>
+        </div>
+        <div>
+          <div class="text-sm font-semibold text-on-surface">{{ case.routed_to | replace('_', ' ') | title }}</div>
+          <div class="text-[10px] text-on-surface-variant uppercase tracking-widest mt-0.5">Assigned Team</div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if user.role == 'admin' %}
+    <div class="bg-surface-container-lowest rounded-xl p-6 shadow-sm">
+      <div class="flex items-center gap-2 mb-4">
+        <span class="material-symbols-outlined text-primary">payments</span>
+        <h2 class="font-headline font-bold text-on-surface">Cost Breakdown</h2>
+      </div>
+      <div class="space-y-3">
+        <div class="flex justify-between text-sm">
+          <span class="text-on-surface-variant">Complaint Total</span>
+          <span class="font-mono font-semibold text-on-surface">${{ "%.2f"|format(case.cost_estimate_usd or 0.0) }}</span>
+        </div>
+        <div class="flex justify-between text-sm">
+          <span class="text-on-surface-variant">Complaint Tokens</span>
+          <span class="font-mono text-on-surface">{% if case.token_total %}{{ "{:,}".format(case.token_total) }}{% else %}—{% endif %}</span>
+        </div>
+        {% if case.latest_run %}
+        <div class="flex justify-between text-sm">
+          <span class="text-on-surface-variant">Latest Run</span>
+          <span class="font-mono text-on-surface">${{ "%.2f"|format(case.latest_run.cost_estimate_total or 0.0) }}</span>
+        </div>
+        <div class="flex justify-between text-sm">
+          <span class="text-on-surface-variant">Latest Run Tokens</span>
+          <span class="font-mono text-on-surface">{% if case.latest_run.token_total %}{{ "{:,}".format(case.latest_run.token_total) }}{% else %}—{% endif %}</span>
+        </div>
+        <div class="flex justify-between text-sm">
+          <span class="text-on-surface-variant">LLM Calls</span>
+          <span class="font-mono text-on-surface">
+            {% if case.latest_run.llm_call_count_available %}
+            {{ case.latest_run.llm_call_count }}
+            {% else %}
+            —
+            {% endif %}
+          </span>
+        </div>
+        {% endif %}
+      </div>
+      {% if case.agent_costs %}
+      <div class="mt-5 pt-5 border-t border-outline-variant/10">
+        <div class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-3">Agent Contribution</div>
+        <div class="space-y-3">
+          {% for agent in case.agent_costs %}
+          <div>
+            <div class="flex items-center justify-between text-xs mb-1">
+              <span class="font-semibold text-on-surface">{{ agent.agent_name | replace('_',' ') | title }}</span>
+              <span class="font-mono text-on-surface-variant">${{ "%.2f"|format(agent.total_cost_usd) }} · {{ agent.share_pct }}%</span>
+            </div>
+            <div class="h-1.5 bg-surface-container-high rounded-full overflow-hidden">
+              <div class="h-full bg-secondary rounded-full" style="width: {{ [agent.share_pct, 100] | min }}%"></div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Review Notes -->
+    {% if case.review_notes %}
+    <div class="bg-surface-container-lowest rounded-xl p-6 shadow-sm">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="material-symbols-outlined text-primary">rate_review</span>
+        <h2 class="font-headline font-bold text-on-surface">Review Notes</h2>
+      </div>
+      <p class="text-sm text-on-surface/70 leading-relaxed">{{ case.review_notes }}</p>
+    </div>
+    {% endif %}
+
+    <!-- Status Management (admin + team) -->
+    {% if user and user.role in ('admin', 'team') %}
+    <div class="bg-surface-container-lowest rounded-xl p-6 shadow-sm">
+      <div class="flex items-center gap-2 mb-4">
+        <span class="material-symbols-outlined text-primary">manage_history</span>
+        <h2 class="font-headline font-bold text-on-surface">Update Status</h2>
+      </div>
+      <div class="mb-4 flex items-center gap-2">
+        <span class="text-sm text-on-surface-variant">Current:</span>
+        <span class="px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wide
+                     {% if case.status == 'resolved' %}bg-secondary-container text-on-secondary-container
+                     {% elif case.status == 'routed' %}bg-tertiary-container text-white/85
+                     {% else %}bg-surface-container-high text-on-surface-variant{% endif %}">
+          {{ case.status | replace('_', ' ') }}
+        </span>
+      </div>
+      <div class="flex flex-col gap-2">
+        <form method="post" action="/complaints/{{ case.id }}/status">
+          <input type="hidden" name="new_status" value="routed">
+          <button type="submit"
+                  {% if case.status == 'routed' %}disabled{% endif %}
+                  class="w-full px-4 py-2.5 rounded-lg text-sm font-semibold transition-all
+                         {% if case.status == 'routed' %}bg-surface-container-high text-on-surface-variant/40 cursor-not-allowed
+                         {% else %}bg-tertiary-container text-on-tertiary-container hover:opacity-80{% endif %}
+                         flex items-center justify-center gap-2">
+            <span class="material-symbols-outlined text-sm">alt_route</span>
+            Mark as Routed
+          </button>
+        </form>
+        <form method="post" action="/complaints/{{ case.id }}/status">
+          <input type="hidden" name="new_status" value="resolved">
+          <button type="submit"
+                  {% if case.status == 'resolved' %}disabled{% endif %}
+                  class="w-full px-4 py-2.5 rounded-lg text-sm font-semibold transition-all
+                         {% if case.status == 'resolved' %}bg-surface-container-high text-on-surface-variant/40 cursor-not-allowed
+                         {% else %}aurora-gradient text-white hover:opacity-90 shadow-md{% endif %}
+                         flex items-center justify-center gap-2">
+            <span class="material-symbols-outlined text-sm">task_alt</span>
+            Mark as Resolved
+          </button>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+
+{% endif %}
+{% endblock %}

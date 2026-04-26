@@ -1,0 +1,350 @@
+{% extends "base.html" %}
+{% block title %}Evaluation{% endblock %}
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+  <header class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
+    <div>
+      <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant mb-1">Admin · Benchmarking</p>
+      <h1 class="text-4xl font-headline font-extrabold tracking-tight text-on-surface">Evaluation Control Center</h1>
+      <p class="text-sm text-on-surface-variant mt-2 max-w-3xl">
+        Gold datasets, system runs, rubric-judge outputs, and disagreement queue in one review surface.
+      </p>
+    </div>
+    <div class="grid grid-cols-3 gap-3 min-w-[320px]">
+      <div class="bg-surface-container-lowest rounded-xl p-4 shadow-sm">
+        <div class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">Source Sets</div>
+        <div class="text-3xl font-headline font-extrabold mt-1">{{ data.summary.source_dataset_count }}</div>
+      </div>
+      <div class="bg-surface-container-lowest rounded-xl p-4 shadow-sm">
+        <div class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">Eval Sets</div>
+        <div class="text-3xl font-headline font-extrabold mt-1">{{ data.summary.dataset_count }}</div>
+      </div>
+      <div class="bg-surface-container-lowest rounded-xl p-4 shadow-sm">
+        <div class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">Open Review</div>
+        <div class="text-3xl font-headline font-extrabold mt-1 {% if data.summary.open_disagreement_count %}text-error{% endif %}">{{ data.summary.open_disagreement_count }}</div>
+      </div>
+    </div>
+  </header>
+
+  <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div class="bg-secondary text-on-secondary rounded-xl p-6 shadow-sm">
+      <div class="text-[10px] uppercase tracking-widest font-bold text-secondary-fixed">Pass</div>
+      <div class="text-4xl font-headline font-extrabold mt-2">{{ data.summary.pass_count }}</div>
+      <div class="text-xs mt-3 text-secondary-fixed">Runs that matched gold and judge expectations cleanly.</div>
+    </div>
+    <div class="bg-primary text-on-primary rounded-xl p-6 shadow-sm">
+      <div class="text-[10px] uppercase tracking-widest font-bold text-primary-fixed">Needs Review</div>
+      <div class="text-4xl font-headline font-extrabold mt-2">{{ data.summary.needs_review_count }}</div>
+      <div class="text-xs mt-3 text-primary-fixed">Disagreements worth adjudication before trusting changes.</div>
+    </div>
+    <div class="bg-error-container text-on-error-container rounded-xl p-6 shadow-sm">
+      <div class="text-[10px] uppercase tracking-widest font-bold">Fail</div>
+      <div class="text-4xl font-headline font-extrabold mt-2">{{ data.summary.fail_count }}</div>
+      <div class="text-xs mt-3">Benchmark runs with major gold or judge regressions.</div>
+    </div>
+  </section>
+
+  <section class="bg-surface-container-lowest rounded-xl p-6 shadow-sm">
+    <div class="flex items-center justify-between mb-5">
+      <div>
+        <h2 class="text-xl font-headline font-bold">Evaluation Terms</h2>
+        <p class="text-xs text-on-surface-variant mt-1">Definitions for the benchmark language used on this page.</p>
+      </div>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+      {% for item in data.terms %}
+      <div class="bg-surface-container-low rounded-xl p-4">
+        <div class="text-sm font-bold text-on-surface">{{ item.term }}</div>
+        <div class="text-xs text-on-surface-variant mt-2 leading-relaxed">{{ item.description }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+    <div class="bg-surface-container-lowest rounded-xl p-6 shadow-sm">
+      <div class="flex items-center justify-between mb-5">
+        <div>
+          <h2 class="text-xl font-headline font-bold">Source Dataset Coverage</h2>
+          <p class="text-xs text-on-surface-variant mt-1">Stratified CFPB-backed source corpora that feed mock-bank evaluation.</p>
+        </div>
+      </div>
+      <div class="space-y-4">
+        {% for source in data.source_datasets %}
+        <div class="bg-surface-container-low rounded-xl p-4">
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <div class="font-semibold">{{ source.name }}</div>
+              <div class="text-xs text-on-surface-variant mt-1">{{ source.source_type }} · {{ source.company_id }}</div>
+            </div>
+            <div class="text-[10px] uppercase tracking-widest font-bold text-secondary">{{ source.status }}</div>
+          </div>
+          <div class="grid grid-cols-3 gap-3 mt-4">
+            <div>
+              <div class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">Sampled</div>
+              <div class="text-lg font-bold mt-1">{{ source.rows_sampled }}</div>
+            </div>
+            <div>
+              <div class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">Strata</div>
+              <div class="text-lg font-bold mt-1">{{ source.strata_count }}</div>
+            </div>
+            <div>
+              <div class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">Narratives</div>
+              <div class="text-lg font-bold mt-1">{{ source.non_null_narrative_rows }}</div>
+            </div>
+          </div>
+        </div>
+        {% else %}
+        <div class="text-sm text-on-surface-variant">No source datasets have been materialized yet.</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="bg-surface-container-lowest rounded-xl p-6 shadow-sm">
+      <div class="flex items-center justify-between mb-5">
+        <div>
+          <h2 class="text-xl font-headline font-bold">Coverage Mix</h2>
+          <p class="text-xs text-on-surface-variant mt-1">How representative the evaluation cases are by product, issue, and narrative size.</p>
+        </div>
+      </div>
+      <div class="space-y-5">
+        <div>
+          <div class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-2">Top Products</div>
+          <canvas id="evaluationProductChart" height="170"></canvas>
+        </div>
+        <div>
+          <div class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-2">Narrative Lengths</div>
+          <div class="flex flex-wrap gap-3">
+            {% for band, count in data.coverage.narrative_lengths.items() %}
+            <div class="bg-surface-container-low rounded-full px-4 py-2 text-sm">
+              <span class="font-semibold">{{ band | title }}</span>
+              <span class="text-on-surface-variant ml-2">{{ count }}</span>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+    <div class="bg-surface-container-lowest rounded-xl p-6 shadow-sm">
+      <div class="flex items-center justify-between mb-5">
+        <div>
+          <h2 class="text-xl font-headline font-bold">System vs Gold</h2>
+          <p class="text-xs text-on-surface-variant mt-1">Dimension-level benchmark accuracy from persisted review records.</p>
+        </div>
+      </div>
+      <div class="space-y-4">
+        {% for row in data.dimension_scores.system_vs_gold %}
+        <div>
+          <div class="flex justify-between text-xs mb-1.5">
+            <span class="font-semibold text-on-surface">{{ row.dimension | replace('_', ' ') | title }}</span>
+            <span class="text-on-surface-variant">{{ row.pass_count }}/{{ row.total }} · {{ row.accuracy }}%</span>
+          </div>
+          <div class="h-2 bg-surface-container-low rounded-full overflow-hidden">
+            <div class="h-full bg-secondary rounded-full" style="width: {{ row.accuracy }}%"></div>
+          </div>
+        </div>
+        {% else %}
+        <div class="text-sm text-on-surface-variant">No completed review records yet.</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="bg-surface-container-lowest rounded-xl p-6 shadow-sm">
+      <div class="flex items-center justify-between mb-5">
+        <div>
+          <h2 class="text-xl font-headline font-bold">Judge vs Gold</h2>
+          <p class="text-xs text-on-surface-variant mt-1">Judge quality against the benchmark rubric, separate from system quality.</p>
+        </div>
+      </div>
+      <div class="space-y-4">
+        {% for row in data.dimension_scores.judge_vs_gold %}
+        <div>
+          <div class="flex justify-between text-xs mb-1.5">
+            <span class="font-semibold text-on-surface">{{ row.dimension | replace('_', ' ') | title }}</span>
+            <span class="text-on-surface-variant">{{ row.pass_count }}/{{ row.total }} · {{ row.accuracy }}%</span>
+          </div>
+          <div class="h-2 bg-surface-container-low rounded-full overflow-hidden">
+            <div class="h-full bg-primary rounded-full" style="width: {{ row.accuracy }}%"></div>
+          </div>
+        </div>
+        {% else %}
+        <div class="text-sm text-on-surface-variant">No judge review records yet.</div>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-4">
+    <div class="flex items-center justify-between">
+      <h2 class="text-2xl font-headline font-bold">Benchmark Datasets</h2>
+      <p class="text-xs text-on-surface-variant">Run the production workflow against the gold set without touching live complaint history.</p>
+    </div>
+    <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+      {% for dataset in data.datasets %}
+      <div class="bg-surface-container-lowest rounded-xl p-6 shadow-sm space-y-4">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <div class="flex items-center gap-2">
+              <h3 class="text-xl font-headline font-bold">{{ dataset.name }}</h3>
+              {% if dataset.is_gold %}
+              <span class="px-2 py-1 rounded-full bg-secondary-container text-on-secondary-container text-[10px] font-bold uppercase tracking-wider">Gold</span>
+              {% endif %}
+            </div>
+            <p class="text-sm text-on-surface-variant mt-2">{{ dataset.description }}</p>
+          </div>
+          <div class="text-right text-xs text-on-surface-variant">
+            <div>{{ dataset.source }}</div>
+            <div>{{ dataset.version }}</div>
+          </div>
+        </div>
+        <div class="grid grid-cols-3 gap-3 text-sm">
+          <div class="bg-surface-container-low rounded-lg p-3">
+            <div class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">Cases</div>
+            <div class="text-xl font-bold mt-1">{{ dataset.total_cases }}</div>
+          </div>
+          <div class="bg-surface-container-low rounded-lg p-3">
+            <div class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">Completed</div>
+            <div class="text-xl font-bold mt-1">{{ dataset.completed_runs }}</div>
+          </div>
+          <div class="bg-surface-container-low rounded-lg p-3">
+            <div class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">Latest</div>
+            <div class="text-sm font-semibold mt-1">{{ dataset.latest_run_status or "Never run" }}</div>
+          </div>
+        </div>
+        <form method="post" action="/evaluation/datasets/{{ dataset.id }}/run" class="flex items-center gap-3">
+          <input type="number" min="0" name="limit" value="0"
+                 class="w-24 rounded-full bg-surface-container-low border-none text-sm"
+                 title="0 means all cases"/>
+          <button type="submit"
+                  class="aurora-gradient text-on-primary px-5 py-2.5 rounded-full text-sm font-semibold flex items-center gap-2 hover:opacity-90 transition-all shadow-md">
+            <span class="material-symbols-outlined text-sm">play_arrow</span>
+            Run Benchmark
+          </button>
+          <span class="text-xs text-on-surface-variant">Use `0` to execute the full dataset.</span>
+        </form>
+      </div>
+      {% else %}
+      <div class="bg-surface-container-lowest rounded-xl p-8 shadow-sm text-on-surface-variant">
+        No benchmark datasets have been registered yet.
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+    <div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
+      <div class="p-6 border-b border-outline-variant/10">
+        <h2 class="text-xl font-headline font-bold">Recent Runs</h2>
+        <p class="text-xs text-on-surface-variant mt-1">System output, judge verdict, and review status side by side.</p>
+      </div>
+      <div class="divide-y divide-outline-variant/10">
+        {% for run in data.recent_runs %}
+        <a href="/evaluation/cases/{{ run.eval_case_id }}" class="block p-5 flex items-start justify-between gap-4 hover:bg-surface-container-low transition-colors">
+          <div>
+            <div class="font-semibold">{{ run.case_title }}</div>
+            <div class="text-xs text-on-surface-variant mt-1">{{ run.dataset_name }}</div>
+            <div class="text-[11px] text-on-surface-variant mt-2">
+              {{ run.started_at.strftime("%Y-%m-%d %H:%M") if run.started_at else "Unknown time" }}
+            </div>
+          </div>
+          <div class="text-right">
+            <div class="text-xs uppercase tracking-widest font-bold {% if run.review_status == 'pass' %}text-secondary{% elif run.review_status == 'fail' %}text-error{% else %}text-primary{% endif %}">
+              {{ run.review_status }}
+            </div>
+            <div class="text-xs text-on-surface-variant mt-1">{{ run.judge_name or "judge pending" }}</div>
+            {% if run.needs_human_review %}
+            <div class="text-[10px] uppercase tracking-widest text-error mt-2 font-bold">Human review</div>
+            {% endif %}
+          </div>
+        </a>
+        {% else %}
+        <div class="p-6 text-sm text-on-surface-variant">No benchmark runs yet.</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
+      <div class="p-6 border-b border-outline-variant/10">
+        <h2 class="text-xl font-headline font-bold">Disagreement Queue</h2>
+        <p class="text-xs text-on-surface-variant mt-1">Cases where gold, system, and judge do not align cleanly.</p>
+      </div>
+      {% if data.disagreement_reason_counts %}
+      <div class="px-6 pt-5">
+        <div class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-3">Top Reason Codes</div>
+        <div class="flex flex-wrap gap-2 mb-4">
+          {% for code, count in data.disagreement_reason_counts.items() %}
+          <span class="px-2 py-1 rounded-full bg-surface-container-low text-[10px] uppercase tracking-wider text-on-surface-variant font-semibold">{{ code }} · {{ count }}</span>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+      <div class="divide-y divide-outline-variant/10">
+        {% for item in data.open_disagreements %}
+        <a href="/evaluation/cases/{{ item.eval_case_id }}" class="block p-5 space-y-2 hover:bg-surface-container-low transition-colors">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <div class="font-semibold">{{ item.case_title }}</div>
+              <div class="text-xs text-on-surface-variant mt-1">{{ item.dataset_name }}</div>
+            </div>
+            <div class="text-right">
+              <div class="text-[10px] uppercase tracking-widest font-bold {% if item.severity == 'high' %}text-error{% else %}text-primary{% endif %}">{{ item.severity }}</div>
+              <div class="text-[10px] text-on-surface-variant mt-1">{{ item.status }}</div>
+            </div>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            {% for code in item.reason_codes %}
+            <span class="px-2 py-1 rounded-full bg-surface-container-low text-[10px] uppercase tracking-wider text-on-surface-variant font-semibold">{{ code }}</span>
+            {% endfor %}
+          </div>
+        </a>
+        {% else %}
+        <div class="p-6 text-sm text-on-surface-variant">No open disagreements.</div>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+  {% if data.coverage.products %}
+  const productCtx = document.getElementById('evaluationProductChart');
+  if (productCtx) {
+    new Chart(productCtx, {
+      type: 'bar',
+      data: {
+        labels: {{ data.coverage.products.keys() | list | tojson }},
+        datasets: [{
+          label: 'Cases',
+          data: {{ data.coverage.products.values() | list | tojson }},
+          borderRadius: 10,
+          backgroundColor: 'rgba(49, 27, 146, 0.72)'
+        }]
+      },
+      options: {
+        plugins: {
+          legend: { display: false }
+        },
+        scales: {
+          x: {
+            ticks: { color: '#6b7280', font: { size: 11 } },
+            grid: { display: false }
+          },
+          y: {
+            ticks: { color: '#6b7280', precision: 0 },
+            grid: { color: 'rgba(120, 120, 120, 0.12)' }
+          }
+        }
+      }
+    });
+  }
+  {% endif %}
+</script>
+{% endblock %}

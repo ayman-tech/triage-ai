@@ -1,0 +1,239 @@
+/* TriageAI — Custom styles */
+
+/* ── Animations ── */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-18px); }
+}
+@keyframes glowPulse {
+  0%, 100% { opacity: 0.7; }
+  50%       { opacity: 1; }
+}
+@keyframes brandPulse {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50%       { opacity: 0.8; transform: scale(1.05); }
+}
+@keyframes spinSlow        { from { transform: rotate(0deg); }  to { transform: rotate(360deg); } }
+@keyframes spinSlowReverse { from { transform: rotate(0deg); }  to { transform: rotate(-360deg); } }
+@keyframes fadeIn          { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+.animate-float       { animation: float 9s ease-in-out infinite; }
+.animate-glow        { animation: glowPulse 5s ease-in-out infinite; }
+.brand-pulse         { animation: brandPulse 5s ease-in-out infinite; }
+.brand-pulse-slow    { animation: brandPulse 8s ease-in-out infinite; }
+.spin-slow           { animation: spinSlow 20s linear infinite; }
+.spin-slow-reverse   { animation: spinSlowReverse 15s linear infinite; }
+
+/* ── TriageAI gradient (primary CTA / brand element) ── */
+.aurora-gradient {
+  background: linear-gradient(135deg, #000666 0%, #1a237e 100%);
+}
+
+/* ── Glass effects ── */
+.glass-effect {
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.glass-nav {
+  background: rgba(251, 249, 245, 0.85);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+
+/* ── Smooth page transitions ── */
+main {
+  animation: fadeIn 0.3s ease;
+}
+
+/* ═══════════════════════════════════════════════════════
+   CSS VARIABLES — TriageAI Palette (Light + Dark)
+═══════════════════════════════════════════════════════ */
+:root {
+  /* Primary — Deep Indigo */
+  --primary:                  0 6 102;
+  --primary-container:        26 35 126;
+  --on-primary:               255 255 255;
+  --on-primary-container:     134 144 238;
+  --primary-fixed:            224 224 255;
+  --primary-fixed-dim:        189 194 255;
+  --on-primary-fixed:         0 7 103;
+  --on-primary-fixed-variant: 52 61 150;
+  --inverse-primary:          189 194 255;
+
+  /* Secondary — Teal */
+  --secondary:                   0 106 98;
+  --secondary-container:         129 243 229;
+  --on-secondary:                255 255 255;
+  --on-secondary-container:      0 111 102;
+  --secondary-fixed:             132 245 232;
+  --secondary-fixed-dim:         102 217 204;
+  --on-secondary-fixed:          0 32 29;
+  --on-secondary-fixed-variant:  0 80 73;
+
+  /* Tertiary — Dark Teal */
+  --tertiary:                   14 30 30;
+  --tertiary-container:         35 51 51;
+  --on-tertiary:                255 255 255;
+  --on-tertiary-container:      138 155 155;
+  --tertiary-fixed:             212 230 229;
+  --tertiary-fixed-dim:         184 202 201;
+  --on-tertiary-fixed:          14 30 30;
+  --on-tertiary-fixed-variant:  58 74 73;
+
+  /* Error */
+  --error:              186 26 26;
+  --error-container:    255 218 214;
+  --on-error:           255 255 255;
+  --on-error-container: 147 0 10;
+
+  /* Surfaces */
+  --background:                  251 249 245;
+  --on-background:               27 28 26;
+  --surface:                     251 249 245;
+  --surface-dim:                 219 218 214;
+  --surface-bright:              251 249 245;
+  --surface-container-lowest:    255 255 255;
+  --surface-container-low:       245 243 239;
+  --surface-container:           239 238 234;
+  --surface-container-high:      234 232 228;
+  --surface-container-highest:   228 226 222;
+  --surface-variant:             228 226 222;
+  --surface-tint:                76 86 175;
+
+  /* Text */
+  --on-surface:         27 28 26;
+  --on-surface-variant: 69 70 82;
+
+  /* Borders */
+  --outline:         118 118 131;
+  --outline-variant: 198 197 212;
+
+  /* Utility */
+  --inverse-surface:    48 49 46;
+  --inverse-on-surface: 242 240 237;
+
+  /* Status dot colors */
+  --status-critical:        186 26 26;
+  --status-critical-shadow: 186 26 26;
+  --status-high:            212 81 103;
+  --status-medium:          0 106 98;
+  --status-low:             0 111 102;
+  --status-low-shadow:      0 111 102;
+
+  /* UI utility */
+  --table-row-hover-bg:   224 224 255;
+  --scrollbar-track:      245 243 239;
+  --scrollbar-thumb:      198 197 212;
+  --scrollbar-thumb-hover: 118 118 131;
+}
+
+/* ── Dark Mode — Indigo/Teal inverted ── */
+.dark {
+  --primary:                  189 194 255;
+  --primary-container:        52 61 150;
+  --on-primary:               0 15 80;
+  --on-primary-container:     224 224 255;
+  --primary-fixed:            224 224 255;
+  --primary-fixed-dim:        189 194 255;
+  --inverse-primary:          0 6 102;
+
+  --secondary:                  102 217 204;
+  --secondary-container:        0 80 73;
+  --on-secondary:               0 32 29;
+  --on-secondary-container:     132 245 232;
+  --secondary-fixed:            132 245 232;
+  --secondary-fixed-dim:        102 217 204;
+
+  --tertiary:                  184 202 201;
+  --tertiary-container:        26 40 40;
+  --on-tertiary:               14 30 30;
+  --on-tertiary-container:     184 202 201;
+
+  --error:              255 180 171;
+  --error-container:    147 0 10;
+  --on-error:           105 0 5;
+  --on-error-container: 255 218 214;
+
+  --background:                  10 10 22;
+  --on-background:               228 226 255;
+  --surface:                     10 10 22;
+  --surface-dim:                 18 18 34;
+  --surface-bright:              48 48 70;
+  --surface-container-lowest:    4 4 14;
+  --surface-container-low:       18 18 34;
+  --surface-container:           24 24 42;
+  --surface-container-high:      34 34 54;
+  --surface-container-highest:   44 44 66;
+  --surface-variant:             44 44 66;
+  --surface-tint:                189 194 255;
+
+  --on-surface:          228 226 255;
+  --on-surface-variant:  197 198 218;
+
+  --outline:          142 143 162;
+  --outline-variant:  68 68 96;
+
+  --inverse-surface:    228 226 255;
+  --inverse-on-surface: 48 49 46;
+
+  --status-critical:        255 180 171;
+  --status-critical-shadow: 255 180 171;
+  --status-high:            255 180 171;
+  --status-medium:          102 217 204;
+  --status-low:             132 245 232;
+  --status-low-shadow:      132 245 232;
+
+  --table-row-hover-bg:    24 24 52;
+  --scrollbar-track:       10 10 22;
+  --scrollbar-thumb:       44 44 66;
+  --scrollbar-thumb-hover: 68 68 96;
+}
+
+/* ── Glass panels ── */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+/* ── Glow effects ── */
+.glow-primary  { box-shadow: 0 8px 24px rgb(var(--primary) / 0.2); }
+.glow-error    { box-shadow: 0 8px 22px rgb(var(--error) / 0.2); }
+.glow-tertiary { box-shadow: 0 8px 22px rgb(var(--tertiary) / 0.2); }
+
+/* ── Trace flow connectors ── */
+.trace-connector { position: relative; }
+.trace-connector::after {
+  content: '';
+  position: absolute;
+  top: 50%; right: -2rem;
+  width: 2rem; height: 2px;
+  background: linear-gradient(to right, rgb(var(--primary-fixed-dim)), rgb(var(--outline-variant)));
+}
+.trace-connector:last-child::after { display: none; }
+
+/* ── Status dots ── */
+.status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.status-dot.critical { background: rgb(var(--status-critical)); box-shadow: 0 0 8px rgb(var(--status-critical-shadow) / 0.45); }
+.status-dot.high     { background: rgb(var(--status-high)); opacity: 0.85; }
+.status-dot.medium   { background: rgb(var(--status-medium)); }
+.status-dot.low      { background: rgb(var(--status-low)); box-shadow: 0 0 8px rgb(var(--status-low-shadow) / 0.4); }
+
+/* ── Confidence bar ── */
+.confidence-bar { height: 6px; border-radius: 3px; background: rgb(var(--surface-variant)); overflow: hidden; }
+.confidence-bar-fill { height: 100%; border-radius: 3px; transition: width 0.6s ease; }
+
+/* ── Ghost borders ── */
+.ghost-border { border: 1px solid rgb(var(--outline) / 0.3); }
+
+/* ── Table row hover ── */
+.table-row-hover { transition: background-color 0.15s ease; }
+.table-row-hover:hover { background-color: rgb(var(--table-row-hover-bg) / 0.55); }
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track  { background: rgb(var(--scrollbar-track)); }
+::-webkit-scrollbar-thumb  { background: rgb(var(--scrollbar-thumb)); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgb(var(--scrollbar-thumb-hover)); }

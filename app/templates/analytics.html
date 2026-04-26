@@ -1,0 +1,337 @@
+{% extends "base.html" %}
+{% block title %}Operations{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-8 -mt-2">
+  <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
+    <div>
+      <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant mb-1">Operations · Admin View</p>
+      <h1 class="text-3xl font-headline font-extrabold tracking-tight text-primary">Operations Center</h1>
+      <p class="text-on-surface-variant mt-1">Spend visibility, agent efficiency, token growth, and complaint-level operational cost analysis.</p>
+    </div>
+    <div class="flex gap-2 bg-surface-container-low p-1 rounded-lg">
+      {% for option in data.range_options %}
+      <a href="/operations?range={{ option.key }}"
+         class="px-4 py-1.5 rounded-md text-sm transition-colors {% if option.key == data.selected_range_key %}bg-surface-container-lowest shadow-sm font-semibold text-on-surface{% else %}text-on-surface-variant hover:bg-surface-container-high{% endif %}">
+        {{ option.label }}
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+    <div class="aurora-gradient rounded-3xl p-8 text-white shadow-xl flex items-center justify-between">
+      <div>
+        <p class="text-indigo-100 text-sm font-bold uppercase tracking-wider mb-2">Tracked Spend</p>
+        <h2 class="text-5xl font-extrabold font-headline">${{ "%.2f"|format(data.llm_spend_total_usd) }}</h2>
+        <p class="text-indigo-200 text-xs mt-4 flex items-center gap-1">
+          <span class="material-symbols-outlined text-sm">monitoring</span>
+          {{ data.selected_range_label }} window · {{ data.llm_call_count }} atomic calls
+        </p>
+      </div>
+      <div class="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center">
+        <span class="material-symbols-outlined text-4xl">savings</span>
+      </div>
+    </div>
+    <div class="rounded-3xl p-8 text-white shadow-xl flex items-center justify-between" style="background: linear-gradient(135deg, #006a62 0%, #004d46 100%);">
+      <div>
+        <p class="text-secondary-fixed text-sm font-bold uppercase tracking-wider mb-2">Complaint Throughput</p>
+        <h2 class="text-5xl font-extrabold font-headline">{{ data.total_complaints }}</h2>
+        <p class="text-secondary-fixed text-xs mt-4 flex items-center gap-1">
+          <span class="material-symbols-outlined text-sm">task_alt</span>
+          {{ data.completed_run_count }} completed runs · {{ "%.1f"|format(data.avg_resolution_seconds / 60) if data.avg_resolution_seconds else "0" }} min average
+        </p>
+      </div>
+      <div class="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center">
+        <span class="material-symbols-outlined text-4xl">speed</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+    <div class="bg-surface-container-low p-6 rounded-xl shadow-sm xl:col-span-2 space-y-2">
+      <span class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Total LLM Spend ({{ data.selected_range_label }})</span>
+      <div class="flex items-baseline gap-2">
+        <span class="text-3xl font-headline font-black text-on-surface">${{ "%.2f"|format(data.llm_spend_total_usd) }}</span>
+        <span class="text-secondary text-sm font-bold">{{ data.llm_call_count }} atomic calls</span>
+      </div>
+      <p class="text-sm text-on-surface-variant">Tracked spend includes historical aggregate rows. Atomic call count excludes aggregate-only backfill rows.</p>
+      <div class="h-2.5 bg-surface-container-high rounded-full overflow-hidden">
+        <div class="h-full bg-secondary rounded-full" style="width: {{ [data.tracking_coverage_pct, 100] | min }}%"></div>
+      </div>
+      <p class="text-[11px] text-on-surface-variant">{{ data.tracking_coverage_pct }}% of complaints in this window have tracked LLM cost.</p>
+    </div>
+    <div class="bg-surface-container-lowest p-6 rounded-xl shadow-sm border-b-2 border-secondary">
+      <div class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-2">Avg Cost per Complaint</div>
+      <div class="text-3xl font-headline font-extrabold text-on-surface">${{ "%.2f"|format(data.avg_cost_per_complaint_usd) }}</div>
+      <p class="mt-2 text-xs text-on-surface-variant">Average tracked spend per complaint in the selected window.</p>
+    </div>
+    <div class="bg-surface-container-lowest p-6 rounded-xl shadow-sm border-b-2 border-primary-container">
+      <div class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-2">Avg Cost per Atomic Call</div>
+      <div class="text-3xl font-headline font-extrabold text-on-surface">${{ "%.4f"|format(data.avg_cost_per_call_usd) }}</div>
+      <p class="mt-2 text-xs text-on-surface-variant">Atomic-call economics only. Historical aggregate-only spend is excluded.</p>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 xl:grid-cols-[1.1fr_0.9fr] gap-6">
+    <div class="bg-surface-container-lowest p-6 rounded-2xl shadow-sm">
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <h2 class="text-sm font-bold text-on-surface">LLM Spend Trend</h2>
+          <p class="text-[11px] text-on-surface-variant">Daily spend pattern for the selected reporting window.</p>
+        </div>
+        <div class="text-xs font-bold text-secondary">{{ data.selected_range_label }}</div>
+      </div>
+      {% if data.spend_trend %}
+      <canvas id="spendTrendChart" height="150"></canvas>
+      {% else %}
+      <div class="flex flex-col items-center justify-center py-12 text-on-surface-variant/40">
+        <span class="material-symbols-outlined text-4xl mb-3">query_stats</span>
+        <p class="text-sm">No spend trend available yet</p>
+      </div>
+      {% endif %}
+    </div>
+    <div class="bg-surface-container-lowest p-6 rounded-2xl shadow-sm" id="agent-analytics">
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <h2 class="text-sm font-bold text-on-surface">Highest Cost Agent</h2>
+          <p class="text-[11px] text-on-surface-variant">Largest share of atomic spend in this reporting window.</p>
+        </div>
+      </div>
+      {% if data.top_agent %}
+      <div class="text-4xl font-headline font-extrabold text-on-surface">{{ data.top_agent.agent_name | replace('_', ' ') | title }}</div>
+      <div class="mt-3 text-sm text-on-surface-variant">${{ "%.2f"|format(data.top_agent.total_cost_usd) }} · {{ data.top_agent.share_pct }}% of atomic spend</div>
+      <div class="mt-4 h-2.5 bg-surface-container-high rounded-full overflow-hidden">
+        <div class="h-full bg-secondary rounded-full" style="width: {{ [data.top_agent.share_pct, 100] | min }}%"></div>
+      </div>
+      <div class="mt-4 grid grid-cols-2 gap-4">
+        <div class="rounded-xl bg-surface-container-low p-4">
+          <div class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-1">Atomic Calls</div>
+          <div class="text-2xl font-headline font-bold text-on-surface">{{ data.top_agent.call_count }}</div>
+        </div>
+        <div class="rounded-xl bg-surface-container-low p-4">
+          <div class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-1">Atomic Spend</div>
+          <div class="text-2xl font-headline font-bold text-on-surface">${{ "%.2f"|format(data.atomic_llm_spend_total_usd) }}</div>
+        </div>
+      </div>
+      {% else %}
+      <div class="py-12 text-center text-on-surface-variant/50 text-sm">No tracked agent cost yet</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 xl:grid-cols-[0.95fr_1.05fr] gap-6">
+    <div class="space-y-6">
+      <div class="bg-surface-container-lowest p-6 rounded-2xl shadow-sm">
+        <div class="flex justify-between items-start mb-5">
+          <div>
+            <p class="text-sm font-bold text-on-surface">Risk Distribution</p>
+            <p class="text-[11px] text-on-surface-variant">Across complaints in the selected window.</p>
+          </div>
+          <span class="material-symbols-outlined text-on-surface-variant">shield</span>
+        </div>
+        {% set risk_colors = {"critical": "bg-error", "high": "bg-error/60", "medium": "bg-secondary", "low": "bg-secondary-container"} %}
+        {% set total_risk = data.risk_counts.values() | sum if data.risk_counts else 1 %}
+        <div class="space-y-3">
+          {% for level in ['critical', 'high', 'medium', 'low'] %}
+          {% set count = data.risk_counts.get(level, 0) %}
+          {% set pct = (count / total_risk * 100) if total_risk > 0 else 0 %}
+          <div>
+            <div class="flex justify-between text-xs mb-1.5">
+              <span class="font-bold uppercase tracking-wider
+                           {% if level == 'critical' %}text-error
+                           {% elif level == 'high' %}text-error/70
+                           {% elif level == 'low' %}text-secondary
+                           {% else %}text-on-tertiary-container{% endif %}">{{ level }}</span>
+              <span class="font-mono text-on-surface-variant">{{ count }}</span>
+            </div>
+            <div class="h-1.5 bg-surface-container-high rounded-full overflow-hidden">
+              <div class="{{ risk_colors.get(level, 'bg-secondary') }} h-full rounded-full transition-all" style="width: {{ pct | int }}%"></div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="bg-surface-container-lowest p-6 rounded-2xl shadow-sm">
+        <div class="flex justify-between items-start mb-5">
+          <div>
+            <p class="text-sm font-bold text-on-surface">Model Spend Mix</p>
+            <p class="text-[11px] text-on-surface-variant">Spend and volume by model for atomic calls only.</p>
+          </div>
+          <span class="material-symbols-outlined text-on-surface-variant">tune</span>
+        </div>
+        <div class="space-y-3">
+          {% for model in data.model_costs %}
+          <div class="rounded-xl bg-surface-container-low p-4">
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <div class="text-sm font-semibold text-on-surface">{{ model.model_name }}</div>
+                <div class="text-[10px] text-on-surface-variant mt-1">{{ model.call_count }} calls · {{ "{:,}".format(model.total_tokens) }} tokens</div>
+              </div>
+              <div class="font-mono font-bold text-on-surface">${{ "%.2f"|format(model.total_cost_usd) }}</div>
+            </div>
+          </div>
+          {% else %}
+          <div class="rounded-xl bg-surface-container-low p-4 text-sm text-on-surface-variant">No model cost data available yet.</div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="space-y-6">
+      <div class="bg-surface-container-lowest rounded-2xl overflow-hidden shadow-sm">
+        <div class="px-6 py-5 border-b border-outline-variant/10">
+          <h2 class="font-headline font-bold text-xl text-on-surface">Agent Cost Analytics</h2>
+          <p class="text-sm text-on-surface-variant mt-1">Which specialist agents are driving spend, token volume, and call frequency.</p>
+        </div>
+        <div class="p-6">
+          {% if data.agent_costs %}
+          <canvas id="agentCostChart" height="220"></canvas>
+          {% else %}
+          <div class="py-12 text-center text-on-surface-variant/50 text-sm">No tracked agent spend data available yet.</div>
+          {% endif %}
+        </div>
+        <table class="w-full text-left">
+          <thead>
+            <tr class="bg-surface-container text-on-surface-variant text-[10px] uppercase tracking-widest font-bold">
+              <th class="px-6 py-4">Agent</th>
+              <th class="px-6 py-4">Spend</th>
+              <th class="px-6 py-4">Calls</th>
+              <th class="px-6 py-4">Avg / Call</th>
+              <th class="px-6 py-4">Share</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-outline-variant/10 text-sm">
+            {% for agent in data.agent_costs %}
+            <tr class="hover:bg-surface-container-low transition-colors">
+              <td class="px-6 py-4 font-semibold text-on-surface">{{ agent.agent_name | replace('_', ' ') | title }}</td>
+              <td class="px-6 py-4 font-mono text-on-surface">${{ "%.2f"|format(agent.total_cost_usd) }}</td>
+              <td class="px-6 py-4 font-mono text-on-surface-variant">{{ agent.call_count }}</td>
+              <td class="px-6 py-4 font-mono text-on-surface-variant">${{ "%.4f"|format(agent.avg_cost_per_call_usd) }}</td>
+              <td class="px-6 py-4 font-mono text-on-surface-variant">{{ agent.share_pct }}%</td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="5" class="px-6 py-10 text-center text-on-surface-variant/50 text-sm">No tracked agent analytics available yet.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="bg-surface-container-lowest rounded-2xl overflow-hidden shadow-sm" id="case-costs">
+        <div class="px-6 py-5 border-b border-outline-variant/10">
+          <h2 class="font-headline font-bold text-xl text-on-surface">Highest Cost Complaints</h2>
+          <p class="text-sm text-on-surface-variant mt-1">Recent tracked complaints with the largest recorded spend.</p>
+        </div>
+        <table class="w-full text-left">
+          <thead>
+            <tr class="bg-surface-container text-on-surface-variant text-[10px] uppercase tracking-widest font-bold">
+              <th class="px-6 py-4">Complaint ID</th>
+              <th class="px-6 py-4">Status</th>
+              <th class="px-6 py-4">Cost</th>
+              <th class="px-6 py-4">Tokens</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-outline-variant/10 text-sm">
+            {% for case in data.top_cost_cases %}
+            <tr class="hover:bg-surface-container-low transition-colors cursor-pointer" onclick="window.location.href='/complaints/{{ case.public_case_id or case.id }}'">
+              <td class="px-6 py-4">
+                <div class="font-bold font-mono text-primary text-xs">#{{ case.public_case_id or case.id[:12] }}</div>
+                <div class="text-[10px] text-on-surface-variant mt-1">{{ case.subject[:72] }}</div>
+              </td>
+              <td class="px-6 py-4 text-xs text-on-surface-variant">{{ case.status | replace('_', ' ') | title }}</td>
+              <td class="px-6 py-4 font-mono text-on-surface">${{ "%.2f"|format(case.cost_estimate_usd or 0.0) }}</td>
+              <td class="px-6 py-4 font-mono text-on-surface-variant">{% if case.token_total %}{{ "{:,}".format(case.token_total) }}{% else %}—{% endif %}</td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="4" class="px-6 py-10 text-center text-on-surface-variant/50 text-sm">No tracked complaint costs available yet.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+{% if data.spend_trend %}
+  const spendCtx = document.getElementById('spendTrendChart').getContext('2d');
+  new Chart(spendCtx, {
+    type: 'line',
+    data: {
+      labels: {{ data.spend_trend | map(attribute='date') | list | tojson }},
+      datasets: [{
+        data: {{ data.spend_trend | map(attribute='cost_usd') | list | tojson }},
+        borderColor: 'rgba(0, 106, 98, 0.95)',
+        backgroundColor: 'rgba(129, 243, 229, 0.22)',
+        fill: true,
+        tension: 0.32,
+        pointRadius: 3,
+        pointBackgroundColor: 'rgba(0, 106, 98, 1)',
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { color: '#767683', font: { family: 'Inter', size: 11 } },
+        },
+        y: {
+          grid: { color: 'rgba(198, 197, 212, 0.3)' },
+          ticks: {
+            color: '#767683',
+            font: { family: 'Inter', size: 11 },
+            callback: (value) => '$' + value
+          },
+        }
+      }
+    }
+  });
+{% endif %}
+
+{% if data.agent_costs %}
+  const agentCtx = document.getElementById('agentCostChart').getContext('2d');
+  new Chart(agentCtx, {
+    type: 'bar',
+    data: {
+      labels: {{ data.agent_cost_chart_labels | tojson }},
+      datasets: [{
+        data: {{ data.agent_cost_chart_values | tojson }},
+        backgroundColor: 'rgba(0, 6, 102, 0.75)',
+        borderRadius: 8,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { color: '#454652', font: { family: 'Inter', size: 11 } },
+        },
+        y: {
+          grid: { color: 'rgba(198, 197, 212, 0.3)' },
+          ticks: {
+            color: '#767683',
+            font: { family: 'Inter', size: 11 },
+            callback: (value) => '$' + value
+          },
+        }
+      }
+    }
+  });
+{% endif %}
+</script>
+{% endblock %}

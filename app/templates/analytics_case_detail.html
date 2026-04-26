@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+{% block title %}Complaint Evaluation Report{% endblock %}
+
+{% block content %}
+{% if data is none %}
+<div class="py-20 text-center">
+  <p class="text-lg font-headline font-bold text-on-surface-variant/60">Evaluation report not found</p>
+  <a href="/operations" class="text-sm text-primary hover:underline mt-3 inline-block font-semibold">Back to operations</a>
+</div>
+{% else %}
+<div class="space-y-8">
+  <div class="flex items-center gap-2 text-sm text-on-surface-variant">
+    <a href="/operations" class="hover:text-primary transition-colors">Operations</a>
+    <span>/</span>
+    <span>Complaint Evaluation</span>
+  </div>
+
+  <header class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+    <div>
+      <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant mb-1">Production Evaluation</p>
+      <h1 class="text-4xl font-headline font-extrabold tracking-tight text-on-surface">Case #{{ data.case.public_case_id }}</h1>
+      <p class="text-sm text-on-surface-variant mt-2">
+        Status {{ data.case.status | replace('_', ' ') | title }}
+        {% if data.report.evaluated_at %} · Evaluated {{ data.report.evaluated_at.strftime('%Y-%m-%d %H:%M') }}{% endif %}
+      </p>
+    </div>
+    <div class="text-right">
+      <div class="text-[10px] uppercase tracking-widest font-bold {% if data.report.overall_status == 'pass' %}text-secondary{% elif data.report.overall_status == 'fail' %}text-error{% else %}text-primary{% endif %}">
+        {{ data.report.overall_status }}
+      </div>
+      <div class="text-xs text-on-surface-variant mt-1">
+        {% if data.report.metrics %}
+        System {{ data.report.metrics.system_verdict or 'pending' }} · Judge {{ data.report.metrics.judge_verdict or 'pending' }}
+        {% endif %}
+      </div>
+    </div>
+  </header>
+
+  <section class="grid grid-cols-1 md:grid-cols-4 gap-4">
+    <div class="bg-surface-container-lowest rounded-xl p-5 shadow-sm">
+      <div class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-2">Overall</div>
+      <div class="text-2xl font-headline font-extrabold {% if data.report.overall_status == 'pass' %}text-secondary{% elif data.report.overall_status == 'fail' %}text-error{% else %}text-primary{% endif %}">
+        {{ data.report.overall_status | replace('_', ' ') | title }}
+      </div>
+    </div>
+    <div class="bg-surface-container-lowest rounded-xl p-5 shadow-sm">
+      <div class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-2">System Eval</div>
+      <div class="text-2xl font-headline font-extrabold {% if data.report.metrics.system_verdict == 'pass' %}text-secondary{% elif data.report.metrics.system_verdict == 'fail' %}text-error{% else %}text-primary{% endif %}">
+        {{ (data.report.metrics.system_verdict or 'pending') | replace('_', ' ') | title }}
+      </div>
+    </div>
+    <div class="bg-surface-container-lowest rounded-xl p-5 shadow-sm">
+      <div class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-2">LLM Judge</div>
+      <div class="text-2xl font-headline font-extrabold {% if data.report.metrics.judge_verdict == 'pass' %}text-secondary{% elif data.report.metrics.judge_verdict == 'fail' %}text-error{% else %}text-primary{% endif %}">
+        {{ (data.report.metrics.judge_verdict or 'pending') | replace('_', ' ') | title }}
+      </div>
+    </div>
+    <div class="bg-surface-container-lowest rounded-xl p-5 shadow-sm">
+      <div class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-2">Review State</div>
+      <div class="text-sm font-semibold {% if data.report.needs_human_review %}text-primary{% else %}text-secondary{% endif %}">
+        {% if data.report.needs_human_review %}Human review recommended{% else %}No escalation needed{% endif %}
+      </div>
+    </div>
+  </section>
+
+  <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+    <section class="bg-surface-container-lowest rounded-xl p-6 shadow-sm">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-xl font-headline font-bold">System Evaluation</h2>
+        {% if data.report.metrics.system_verdict %}
+        <span class="text-[10px] uppercase tracking-widest font-bold {% if data.report.metrics.system_verdict == 'pass' %}text-secondary{% elif data.report.metrics.system_verdict == 'fail' %}text-error{% else %}text-primary{% endif %}">
+          {{ data.report.metrics.system_verdict }}
+        </span>
+        {% endif %}
+      </div>
+
+      {% if data.report.system_reasoning %}
+      <div class="bg-surface-container-low rounded-xl p-4 mb-5">
+        <div class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-2">Executive Summary</div>
+        <div class="space-y-2">
+          {% for sentence in data.report.system_reasoning.split('. ') %}
+          {% set clean = sentence.strip() %}
+          {% if clean %}
+          <div class="text-sm text-on-surface leading-relaxed">• {{ clean }}{% if not clean.endswith('.') %}.{% endif %}</div>
+          {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      {% if data.report.system_assessment %}
+      <div class="space-y-4">
+        <div>
+          <div class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-2">Check Breakdown</div>
+          <div class="space-y-2">
+            {% for label, passed in data.report.system_assessment.checks.items() %}
+            <div class="flex items-center justify-between rounded-xl bg-surface-container-low px-4 py-3">
+              <div class="text-sm text-on-surface">{{ label | replace('_', ' ') | title }}</div>
+              <div class="text-xs font-bold uppercase {% if passed %}text-secondary{% else %}text-error{% endif %}">
+                {% if passed %}Pass{% else %}Gap{% endif %}
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div>
+          <div class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-2">Key Gaps</div>
+          {% if data.report.system_assessment.failed_dimensions %}
+          <div class="flex flex-wrap gap-2">
+            {% for item in data.report.system_assessment.failed_dimensions %}
+            <span class="px-3 py-1 rounded-full bg-error/10 text-error text-xs font-semibold">{{ item | replace('_', ' ') | title }}</span>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="text-sm text-secondary font-medium">No system gaps were flagged.</div>
+          {% endif %}
+        </div>
+      </div>
+      {% else %}
+      <div class="bg-surface-container-low rounded-xl p-4 text-sm text-on-surface-variant">No system evaluation stored yet.</div>
+      {% endif %}
+    </section>
+
+    <section class="bg-surface-container-lowest rounded-xl p-6 shadow-sm">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-xl font-headline font-bold">LLM Judge Report</h2>
+        {% if data.report.metrics.judge_verdict %}
+        <span class="text-[10px] uppercase tracking-widest font-bold {% if data.report.metrics.judge_verdict == 'pass' %}text-secondary{% elif data.report.metrics.judge_verdict == 'fail' %}text-error{% else %}text-primary{% endif %}">
+          {{ data.report.metrics.judge_verdict }}
+        </span>
+        {% endif %}
+      </div>
+
+      {% if data.report.judge_reasoning %}
+      <div class="bg-surface-container-low rounded-xl p-4 mb-5">
+        <div class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-2">Judge Summary</div>
+        <div class="space-y-2">
+          {% for sentence in data.report.judge_reasoning.split('. ') %}
+          {% set clean = sentence.strip() %}
+          {% if clean %}
+          <div class="text-sm text-on-surface leading-relaxed">• {{ clean }}{% if not clean.endswith('.') %}.{% endif %}</div>
+          {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      {% if data.report.judge_output %}
+      <div class="space-y-4">
+        <div>
+          <div class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-2">Rubric Review</div>
+          <div class="space-y-2">
+            {% for label, passed in data.report.judge_output.rubric.items() %}
+            <div class="flex items-center justify-between rounded-xl bg-surface-container-low px-4 py-3">
+              <div class="text-sm text-on-surface">{{ label | replace('_', ' ') | title }}</div>
+              <div class="text-xs font-bold uppercase {% if passed %}text-secondary{% else %}text-error{% endif %}">
+                {% if passed %}Pass{% else %}Concern{% endif %}
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="rounded-xl bg-surface-container-low p-4">
+            <div class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-2">Judge Findings</div>
+            {% if data.report.judge_output.summary.failed_dimensions %}
+            <div class="flex flex-wrap gap-2">
+              {% for item in data.report.judge_output.summary.failed_dimensions %}
+              <span class="px-3 py-1 rounded-full bg-error/10 text-error text-xs font-semibold">{{ item | replace('_', ' ') | title }}</span>
+              {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-sm text-secondary font-medium">No judge concerns were raised.</div>
+            {% endif %}
+          </div>
+          <div class="rounded-xl bg-surface-container-low p-4">
+            <div class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-2">Evidence Notes</div>
+            <div class="space-y-1 text-sm text-on-surface">
+              <div>Contradiction expected: <span class="font-semibold">{{ 'Yes' if data.report.judge_output.summary.contradiction_expected else 'No' }}</span></div>
+              {% if data.report.judge_output.summary.narrative_amounts %}
+              <div>Narrative amounts: <span class="font-semibold">{{ data.report.judge_output.summary.narrative_amounts | join(', ') }}</span></div>
+              {% endif %}
+              {% if data.report.judge_output.summary.document_amounts %}
+              <div>Document amounts: <span class="font-semibold">{{ data.report.judge_output.summary.document_amounts | join(', ') }}</span></div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+      {% else %}
+      <div class="bg-surface-container-low rounded-xl p-4 text-sm text-on-surface-variant">No judge report is available yet.</div>
+      {% endif %}
+    </section>
+  </div>
+
+  <section class="bg-surface-container-lowest rounded-xl p-6 shadow-sm">
+    <h2 class="text-xl font-headline font-bold mb-4">Alignment Signals</h2>
+    {% if data.report.disagreement_types %}
+    <div class="flex flex-wrap gap-2">
+      {% for item in data.report.disagreement_types %}
+      <span class="px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold">{{ item | replace('_', ' ') | title }}</span>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-sm text-secondary font-medium">System evaluation and judge report are aligned.</div>
+    {% endif %}
+  </section>
+</div>
+{% endif %}
+{% endblock %}

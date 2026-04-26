@@ -1,0 +1,438 @@
+{% extends "base.html" %}
+{% block title %}Sign In — TriageAI{% endblock %}
+
+{% block head %}
+<style>
+/* Full-bleed layout — remove sidebar/header offset */
+main { margin-left: 0 !important; padding-top: 0 !important; min-height: 100vh !important; }
+main > div { padding: 0 !important; height: 100vh !important; }
+
+@keyframes floatNode {
+  0%, 100% { transform: translateY(0px) scale(1); opacity: 0.6; }
+  50%       { transform: translateY(-12px) scale(1.05); opacity: 1; }
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes pulse-ring {
+  0%   { transform: scale(0.9); opacity: 0.6; }
+  100% { transform: scale(1.4); opacity: 0; }
+}
+
+.node-1 { animation: floatNode 6s ease-in-out infinite; }
+.node-2 { animation: floatNode 8s ease-in-out infinite 1s; }
+.node-3 { animation: floatNode 7s ease-in-out infinite 2.5s; }
+.node-4 { animation: floatNode 9s ease-in-out infinite 0.5s; }
+
+.fade-up-1 { animation: fadeUp 0.5s ease both 0.1s; }
+.fade-up-2 { animation: fadeUp 0.5s ease both 0.2s; }
+.fade-up-3 { animation: fadeUp 0.5s ease both 0.3s; }
+.fade-up-4 { animation: fadeUp 0.5s ease both 0.4s; }
+.fade-up-5 { animation: fadeUp 0.5s ease both 0.5s; }
+
+.pulse-ring::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 2px solid rgba(208, 188, 255, 0.5);
+  animation: pulse-ring 2.5s ease-out infinite;
+}
+
+.input-field {
+  width: 100%;
+  background: #ffffff;
+  border: 1.5px solid #e0e3e5;
+  border-radius: 12px;
+  padding: 14px 16px;
+  font-size: 14px;
+  color: #191c1e;
+  font-family: 'Inter', sans-serif;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  outline: none;
+}
+.input-field:focus {
+  border-color: #000666;
+  box-shadow: 0 0 0 4px rgba(0, 6, 102, 0.08);
+}
+.input-field::placeholder { color: #9ba3af; }
+
+.tab-btn {
+  flex: 1;
+  padding: 10px 0;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+.tab-btn.active {
+  background: #000666;
+  color: #ffffff;
+}
+.tab-btn.inactive {
+  background: transparent;
+  color: #737784;
+}
+.tab-btn.inactive:hover {
+  color: #000666;
+}
+
+/* Modal overlay */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+.modal-overlay.hidden { display: none; }
+.modal-box {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 32px 28px;
+  max-width: 360px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="flex h-screen w-full" style="background:#f2f4f6;">
+
+  <!-- ══════════════════════════════════
+       LEFT PANEL — Brand / Hero
+  ══════════════════════════════════ -->
+  <div class="hidden lg:flex lg:w-[52%] flex-col justify-between p-12 relative overflow-hidden"
+       style="background: radial-gradient(circle at 60% 40%, #1a237e 0%, #000666 50%, #0f2240 100%);">
+
+    <!-- Decorative background -->
+    <div class="absolute inset-0 pointer-events-none overflow-hidden">
+      <!-- Grid lines -->
+      <svg class="absolute inset-0 w-full h-full opacity-[0.04]" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <pattern id="grid" width="48" height="48" patternUnits="userSpaceOnUse">
+            <path d="M 48 0 L 0 0 0 48" fill="none" stroke="white" stroke-width="0.5"/>
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#grid)"/>
+      </svg>
+      <!-- Glowing orbs -->
+      <div class="absolute top-1/3 right-1/4 w-72 h-72 rounded-full blur-[100px]" style="background:rgba(26,35,126,0.3);"></div>
+      <div class="absolute bottom-1/4 left-1/4 w-56 h-56 rounded-full blur-[80px]" style="background:rgba(0,106,98,0.25);"></div>
+    </div>
+
+    <!-- Top: Logo -->
+    <div class="relative z-10">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl flex items-center justify-center" style="background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.2);">
+          <span class="material-symbols-outlined text-white text-xl">monitoring</span>
+        </div>
+        <span class="font-headline font-extrabold text-white text-xl tracking-tight">TriageAI</span>
+      </div>
+    </div>
+
+    <!-- Middle: Centered hero content -->
+    <div class="relative z-10 flex flex-col items-center text-center px-8">
+
+      <!-- Symmetrical node ring -->
+      <div class="relative w-48 h-48 mb-10">
+        <!-- Outer ring -->
+        <div class="absolute inset-0 rounded-full" style="border:1px solid rgba(255,255,255,0.08);"></div>
+        <!-- Inner ring -->
+        <div class="absolute inset-6 rounded-full" style="border:1px solid rgba(255,255,255,0.06);"></div>
+
+        <!-- Center hub -->
+        <div class="absolute inset-0 flex items-center justify-center">
+          <div class="relative w-16 h-16 rounded-2xl flex items-center justify-center pulse-ring"
+               style="background:linear-gradient(135deg,rgba(0,6,102,0.85),rgba(26,35,126,0.95)); border:1px solid rgba(189,194,255,0.2);">
+            <span class="material-symbols-outlined text-white text-3xl" style="font-variation-settings:'FILL' 1;">hub</span>
+          </div>
+        </div>
+
+        <!-- 4 symmetrical orbiting nodes — top, right, bottom, left -->
+        <!-- Top -->
+        <div class="node-1 absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 rounded-full flex items-center justify-center"
+             style="background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2);">
+          <span class="material-symbols-outlined text-white" style="font-size:16px;">verified_user</span>
+        </div>
+        <!-- Right -->
+        <div class="node-2 absolute right-0 top-1/2 translate-x-1/2 -translate-y-1/2 w-10 h-10 rounded-full flex items-center justify-center"
+             style="background:rgba(0,6,102,0.35); border:1px solid rgba(189,194,255,0.2);">
+          <span class="material-symbols-outlined text-white" style="font-size:16px;">analytics</span>
+        </div>
+        <!-- Bottom -->
+        <div class="node-3 absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-10 h-10 rounded-full flex items-center justify-center"
+             style="background:rgba(0,87,88,0.4); border:1px solid rgba(165,239,240,0.3);">
+          <span class="material-symbols-outlined text-white" style="font-size:16px;">gavel</span>
+        </div>
+        <!-- Left -->
+        <div class="node-4 absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 rounded-full flex items-center justify-center"
+             style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.18);">
+          <span class="material-symbols-outlined text-white" style="font-size:16px;">shield</span>
+        </div>
+
+        <!-- Connecting lines from center to nodes -->
+        <svg class="absolute inset-0 w-full h-full opacity-20" xmlns="http://www.w3.org/2000/svg">
+          <line x1="50%" y1="50%" x2="50%" y2="0%"   stroke="white" stroke-width="0.8" stroke-dasharray="3 3"/>
+          <line x1="50%" y1="50%" x2="100%" y2="50%" stroke="white" stroke-width="0.8" stroke-dasharray="3 3"/>
+          <line x1="50%" y1="50%" x2="50%" y2="100%" stroke="white" stroke-width="0.8" stroke-dasharray="3 3"/>
+          <line x1="50%" y1="50%" x2="0%"   y2="50%" stroke="white" stroke-width="0.8" stroke-dasharray="3 3"/>
+        </svg>
+      </div>
+
+      <!-- Hero text — centered -->
+      <h1 class="font-headline font-extrabold text-white text-4xl leading-tight tracking-tight mb-4">
+        Complaint Intelligence,<br/>
+        <span style="color:#d0bcff;">Built for Scale.</span>
+      </h1>
+      <p class="text-sm leading-relaxed max-w-xs" style="color:#a5bfee;">
+        Multi-agent AI orchestration that transforms every customer complaint into a structured, compliant, and resolved outcome.
+      </p>
+
+      <!-- Stats row — centered and evenly spaced -->
+      <div class="flex items-center justify-center gap-8 mt-10 w-full">
+        <div class="text-center">
+          <div class="font-headline font-extrabold text-white text-2xl">99.9%</div>
+          <div class="text-[10px] uppercase tracking-widest mt-1" style="color:rgba(165,191,238,0.6);">Compliance</div>
+        </div>
+        <div style="width:1px; height:32px; background:rgba(255,255,255,0.12);"></div>
+        <div class="text-center">
+          <div class="font-headline font-extrabold text-white text-2xl">36%</div>
+          <div class="text-[10px] uppercase tracking-widest mt-1" style="color:rgba(165,191,238,0.6);">Faster</div>
+        </div>
+        <div style="width:1px; height:32px; background:rgba(255,255,255,0.12);"></div>
+        <div class="text-center">
+          <div class="font-headline font-extrabold text-white text-2xl">2.5M</div>
+          <div class="text-[10px] uppercase tracking-widest mt-1" style="color:rgba(165,191,238,0.6);">Req / Year</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom: Trust badges — centered -->
+    <div class="relative z-10 flex items-center justify-center gap-6">
+      <div class="flex items-center gap-2">
+        <span class="material-symbols-outlined text-sm" style="color:#a5eff0;">verified</span>
+        <span class="text-[10px] font-semibold uppercase tracking-widest" style="color:rgba(165,191,238,0.6);">SOC2 Type II</span>
+      </div>
+      <div style="width:1px; height:14px; background:rgba(255,255,255,0.12);"></div>
+      <div class="flex items-center gap-2">
+        <span class="material-symbols-outlined text-sm" style="color:#a5eff0;">shield</span>
+        <span class="text-[10px] font-semibold uppercase tracking-widest" style="color:rgba(165,191,238,0.6);">GDPR Ready</span>
+      </div>
+      <div style="width:1px; height:14px; background:rgba(255,255,255,0.12);"></div>
+      <div class="flex items-center gap-2">
+        <span class="material-symbols-outlined text-sm" style="color:#a5eff0;">lock</span>
+        <span class="text-[10px] font-semibold uppercase tracking-widest" style="color:rgba(165,191,238,0.6);">Encrypted</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════
+       RIGHT PANEL — Auth Forms
+  ══════════════════════════════════ -->
+  <div class="flex-1 flex flex-col items-center justify-center px-8 py-12" style="background:#ffffff;">
+
+    <div class="w-full max-w-[400px]">
+
+      <!-- Mobile logo (shown only on small screens) -->
+      <div class="lg:hidden flex items-center gap-2 mb-10">
+        <div class="w-8 h-8 rounded-xl flex items-center justify-center" style="background:#000666;">
+          <span class="material-symbols-outlined text-white text-base">monitoring</span>
+        </div>
+        <span class="font-headline font-extrabold text-xl tracking-tight" style="color:#000666;">TriageAI</span>
+      </div>
+
+      <!-- Tab switcher -->
+      <div class="flex gap-1 p-1 rounded-xl mb-8 fade-up-1" style="background:#f2f4f6;">
+        <button id="tab-signin" class="tab-btn active" onclick="switchTab('signin')">Sign In</button>
+        <button id="tab-signup" class="tab-btn inactive" onclick="switchTab('signup')">Create Account</button>
+      </div>
+
+      <!-- ── SIGN IN FORM ── -->
+      <div id="signin-panel">
+
+        <!-- Form header -->
+        <div class="mb-6 fade-up-1">
+          <p class="text-xs font-bold uppercase tracking-[0.2em] mb-2" style="color:#000666;">Welcome back</p>
+          <h2 class="font-headline font-extrabold text-3xl tracking-tight" style="color:#191c1e;">Sign in to your workspace</h2>
+          <p class="mt-2 text-sm" style="color:#737784;">Enter your credentials to access the TriageAI dashboard.</p>
+        </div>
+
+        <!-- Error / success message -->
+        {% if error %}
+        <div class="mb-6 flex items-center gap-3 px-4 py-3 rounded-xl fade-up-1"
+             style="background:#fff0f0; border:1px solid rgba(186,26,26,0.2);">
+          <span class="material-symbols-outlined text-sm shrink-0" style="color:#ba1a1a;">error</span>
+          <p class="text-sm" style="color:#ba1a1a;">{{ error }}</p>
+        </div>
+        {% endif %}
+        {% if success %}
+        <div class="mb-6 flex items-center gap-3 px-4 py-3 rounded-xl fade-up-1"
+             style="background:#f0fff4; border:1px solid rgba(22,163,74,0.2);">
+          <span class="material-symbols-outlined text-sm shrink-0" style="color:#16a34a;">check_circle</span>
+          <p class="text-sm" style="color:#16a34a;">{{ success }}</p>
+        </div>
+        {% endif %}
+
+        <!-- Form -->
+        <form action="/login" method="post" class="space-y-5">
+
+          <!-- Email -->
+          <div class="fade-up-2">
+            <label class="block text-sm font-semibold mb-2" style="color:#434653;">Email Address</label>
+            <div class="relative">
+              <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-lg pointer-events-none" style="color:#9ba3af;">email</span>
+              <input type="email" name="email" required placeholder="Enter your email"
+                     class="input-field" style="padding-left: 44px;"/>
+            </div>
+          </div>
+
+          <!-- Password -->
+          <div class="fade-up-3">
+            <label class="block text-sm font-semibold mb-2" style="color:#434653;">Password</label>
+            <div class="relative">
+              <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-lg pointer-events-none" style="color:#9ba3af;">lock</span>
+              <input type="password" name="password" required placeholder="Enter your password"
+                     class="input-field" style="padding-left: 44px;"/>
+            </div>
+          </div>
+
+          <!-- Submit -->
+          <div class="pt-2 fade-up-4">
+            <button type="submit"
+                    class="w-full py-4 rounded-xl font-headline font-bold text-white text-sm tracking-wide transition-all hover:opacity-90 hover:shadow-lg active:scale-[0.98]"
+                    style="background:linear-gradient(135deg, #000666, #1a237e); box-shadow: 0 4px 16px rgba(0,6,102,0.3);">
+              Sign In to TriageAI
+            </button>
+          </div>
+        </form>
+
+        <!-- Forgot password -->
+        <div class="text-center mt-4 fade-up-5">
+          <button type="button" onclick="document.getElementById('forgot-modal').classList.remove('hidden')"
+                  class="text-sm font-medium transition-colors"
+                  style="color:#000666; background:none; border:none; cursor:pointer;">
+            Forgot password?
+          </button>
+        </div>
+
+      </div><!-- /signin-panel -->
+
+      <!-- ── CREATE ACCOUNT FORM ── -->
+      <div id="signup-panel" class="hidden">
+
+        <!-- Form header -->
+        <div class="mb-6 fade-up-1">
+          <p class="text-xs font-bold uppercase tracking-[0.2em] mb-2" style="color:#000666;">New here?</p>
+          <h2 class="font-headline font-extrabold text-3xl tracking-tight" style="color:#191c1e;">Create your account</h2>
+          <p class="mt-2 text-sm" style="color:#737784;">Sign up to start managing complaints with TriageAI.</p>
+        </div>
+
+        <!-- Signup error (shown when show_signup=True on POST) -->
+        {% if error and show_signup %}
+        <div class="mb-6 flex items-center gap-3 px-4 py-3 rounded-xl"
+             style="background:#fff0f0; border:1px solid rgba(186,26,26,0.2);">
+          <span class="material-symbols-outlined text-sm shrink-0" style="color:#ba1a1a;">error</span>
+          <p class="text-sm" style="color:#ba1a1a;">{{ error }}</p>
+        </div>
+        {% endif %}
+
+        <form action="/signup" method="post" class="space-y-5">
+
+          <!-- Email -->
+          <div class="fade-up-2">
+            <label class="block text-sm font-semibold mb-2" style="color:#434653;">Email Address</label>
+            <div class="relative">
+              <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-lg pointer-events-none" style="color:#9ba3af;">email</span>
+              <input type="email" name="email" required placeholder="Enter your email"
+                     class="input-field" style="padding-left: 44px;"/>
+            </div>
+          </div>
+
+          <!-- Password -->
+          <div class="fade-up-3">
+            <label class="block text-sm font-semibold mb-2" style="color:#434653;">Password</label>
+            <div class="relative">
+              <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-lg pointer-events-none" style="color:#9ba3af;">lock</span>
+              <input type="password" name="password" required placeholder="Create a password"
+                     class="input-field" style="padding-left: 44px;"/>
+            </div>
+          </div>
+
+          <!-- Submit -->
+          <div class="pt-2 fade-up-4">
+            <button type="submit"
+                    class="w-full py-4 rounded-xl font-headline font-bold text-white text-sm tracking-wide transition-all hover:opacity-90 hover:shadow-lg active:scale-[0.98]"
+                    style="background:linear-gradient(135deg, #000666, #1a237e); box-shadow: 0 4px 16px rgba(0,6,102,0.3);">
+              Create Account
+            </button>
+          </div>
+        </form>
+
+      </div><!-- /signup-panel -->
+
+      <!-- Auth state carrier (read by JS below) -->
+      <span id="auth-state" data-show-signup="{{ 'true' if show_signup else 'false' }}" class="hidden"></span>
+
+      <!-- Footer note -->
+      <p class="text-center text-xs mt-8 fade-up-5" style="color:#9ba3af;">
+        Protected by end-to-end encryption &amp; SOC2 compliant infrastructure.
+      </p>
+
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+     FORGOT PASSWORD MODAL
+══════════════════════════════════ -->
+<div id="forgot-modal" class="modal-overlay hidden">
+  <div class="modal-box">
+    <div class="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4"
+         style="background:#e0e0ff;">
+      <span class="material-symbols-outlined" style="color:#000666; font-size:24px;">support_agent</span>
+    </div>
+    <h3 class="font-headline font-extrabold text-xl mb-2" style="color:#191c1e;">Need help signing in?</h3>
+    <p class="text-sm mb-1" style="color:#737784;">Please call Company Customer Care at</p>
+    <p class="font-bold text-lg mb-6" style="color:#000666;">+1 (123) 4567-890</p>
+    <button onclick="document.getElementById('forgot-modal').classList.add('hidden')"
+            class="w-full py-3 rounded-xl font-semibold text-sm text-white transition-all hover:opacity-90"
+            style="background:#000666;">
+      Close
+    </button>
+  </div>
+</div>
+
+<script>
+  function switchTab(tab) {
+    const signinPanel = document.getElementById('signin-panel');
+    const signupPanel = document.getElementById('signup-panel');
+    const tabSignin   = document.getElementById('tab-signin');
+    const tabSignup   = document.getElementById('tab-signup');
+
+    if (tab === 'signin') {
+      signinPanel.classList.remove('hidden');
+      signupPanel.classList.add('hidden');
+      tabSignin.classList.replace('inactive', 'active');
+      tabSignup.classList.replace('active', 'inactive');
+    } else {
+      signupPanel.classList.remove('hidden');
+      signinPanel.classList.add('hidden');
+      tabSignup.classList.replace('inactive', 'active');
+      tabSignin.classList.replace('active', 'inactive');
+    }
+  }
+
+  // If a signup error was returned, auto-switch to the Create Account tab
+  if (document.getElementById('auth-state').dataset.showSignup === 'true') {
+    switchTab('signup');
+  }
+</script>
+{% endblock %}

@@ -1,0 +1,76 @@
+"""Risk-assessment agent – evaluates complaint risk level."""
+
+from __future__ import annotations
+
+import logging
+from pathlib import Path
+
+from app.agents.narrative_context import narrative_for_agent_prompt
+from app.agents.tool_loop import run_agent_with_tools
+from app.agents.tools import (
+    get_case_document_facts,
+    lookup_severity_rubric,
+    search_case_documents,
+    search_similar_complaints,
+)
+from app.schemas.case import CaseRead
+from app.schemas.classification import ClassificationResult
+from app.schemas.risk import RiskAssessment
+
+logger = logging.getLogger(__name__)
+
+_PROMPT_PATH = Path(__file__).resolve().parent.parent / "prompts" / "risk.md"
+
+
+def _load_prompt() -> str:
+    return _PROMPT_PATH.read_text(encoding="utf-8")
+
+
+def run_risk_assessment(
+    *,
+    classification: ClassificationResult,
+    case: CaseRead | None = None,
+    narrative: str = "",
+    instructions: str = "",
+    model_name: str | None = None,
+    temperature: float = 0.0,
+) -> RiskAssessment:
+    """Assess the risk posed by the complaint."""
+    logger.info("Risk agent running")
+
+    system_prompt = _load_prompt()
+    narrative_text = narrative_for_agent_prompt(case) if case is not None else narrative
+    review_hint = ""
+    if classification.review_recommended:
+        review_hint = (
+            "\nNote: Classification has review_recommended=true; "
+            f"reason_codes={classification.reason_codes}. Treat regulatory sensitivity carefully.\n"
+        )
+
+    user_message = (
+        f"Narrative / case text:\n{narrative_text}\n"
+        f"{review_hint}"
+        f"Classification: {classification.model_dump_json()}\n"
+    )
+    if case is not None and getattr(case, "id", None):
+        user_message += f"Case ID: {case.id}\n"
+    if instructions:
+        user_message += f"\nSupervisor instructions: {instructions}\n"
+
+    user_message += (
+        "\nYou have tools available to search for similar complaints and look up "
+        "severity rubrics, document facts, and uploaded case-document content. "
+        "If documents are attached, use them to ground your risk assessment. "
+        "When done, respond with the risk assessment JSON."
+    )
+
+    tools = [search_similar_complaints, lookup_severity_rubric, get_case_document_facts, search_case_documents]
+    result_data = run_agent_with_tools(system_prompt, user_message, tools)
+    result = RiskAssessment(**result_data)
+
+    logger.info(
+        "Risk assessment complete – level=%s, score=%.1f",
+        result.risk_level,
+        result.risk_score,
+    )
+    return result

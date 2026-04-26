@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>{% block title %}TriageAI{% endblock %} — Complaint AI</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "primary":                  "rgb(var(--primary) / <alpha-value>)",
+            "primary-container":        "rgb(var(--primary-container) / <alpha-value>)",
+            "on-primary":               "rgb(var(--on-primary) / <alpha-value>)",
+            "on-primary-container":     "rgb(var(--on-primary-container) / <alpha-value>)",
+            "primary-fixed":            "rgb(var(--primary-fixed) / <alpha-value>)",
+            "primary-fixed-dim":        "rgb(var(--primary-fixed-dim) / <alpha-value>)",
+            "on-primary-fixed":         "rgb(var(--on-primary-fixed) / <alpha-value>)",
+            "on-primary-fixed-variant": "rgb(var(--on-primary-fixed-variant) / <alpha-value>)",
+            "inverse-primary":          "rgb(var(--inverse-primary) / <alpha-value>)",
+            "secondary":                "rgb(var(--secondary) / <alpha-value>)",
+            "secondary-container":      "rgb(var(--secondary-container) / <alpha-value>)",
+            "on-secondary":             "rgb(var(--on-secondary) / <alpha-value>)",
+            "on-secondary-container":   "rgb(var(--on-secondary-container) / <alpha-value>)",
+            "secondary-fixed":          "rgb(var(--secondary-fixed) / <alpha-value>)",
+            "secondary-fixed-dim":      "rgb(var(--secondary-fixed-dim) / <alpha-value>)",
+            "on-secondary-fixed":       "rgb(var(--on-secondary-fixed) / <alpha-value>)",
+            "tertiary":                 "rgb(var(--tertiary) / <alpha-value>)",
+            "tertiary-container":       "rgb(var(--tertiary-container) / <alpha-value>)",
+            "on-tertiary":              "rgb(var(--on-tertiary) / <alpha-value>)",
+            "on-tertiary-container":    "rgb(var(--on-tertiary-container) / <alpha-value>)",
+            "tertiary-fixed":           "rgb(var(--tertiary-fixed) / <alpha-value>)",
+            "tertiary-fixed-dim":       "rgb(var(--tertiary-fixed-dim) / <alpha-value>)",
+            "on-tertiary-fixed":        "rgb(var(--on-tertiary-fixed) / <alpha-value>)",
+            "on-tertiary-fixed-variant":"rgb(var(--on-tertiary-fixed-variant) / <alpha-value>)",
+            "error":                    "rgb(var(--error) / <alpha-value>)",
+            "error-container":          "rgb(var(--error-container) / <alpha-value>)",
+            "on-error":                 "rgb(var(--on-error) / <alpha-value>)",
+            "on-error-container":       "rgb(var(--on-error-container) / <alpha-value>)",
+            "background":               "rgb(var(--background) / <alpha-value>)",
+            "on-background":            "rgb(var(--on-background) / <alpha-value>)",
+            "surface":                  "rgb(var(--surface) / <alpha-value>)",
+            "surface-dim":              "rgb(var(--surface-dim) / <alpha-value>)",
+            "surface-bright":           "rgb(var(--surface-bright) / <alpha-value>)",
+            "surface-container-lowest": "rgb(var(--surface-container-lowest) / <alpha-value>)",
+            "surface-container-low":    "rgb(var(--surface-container-low) / <alpha-value>)",
+            "surface-container":        "rgb(var(--surface-container) / <alpha-value>)",
+            "surface-container-high":   "rgb(var(--surface-container-high) / <alpha-value>)",
+            "surface-container-highest":"rgb(var(--surface-container-highest) / <alpha-value>)",
+            "surface-variant":          "rgb(var(--surface-variant) / <alpha-value>)",
+            "surface-tint":             "rgb(var(--surface-tint) / <alpha-value>)",
+            "on-surface":               "rgb(var(--on-surface) / <alpha-value>)",
+            "on-surface-variant":       "rgb(var(--on-surface-variant) / <alpha-value>)",
+            "outline":                  "rgb(var(--outline) / <alpha-value>)",
+            "outline-variant":          "rgb(var(--outline-variant) / <alpha-value>)",
+            "inverse-surface":          "rgb(var(--inverse-surface) / <alpha-value>)",
+            "inverse-on-surface":       "rgb(var(--inverse-on-surface) / <alpha-value>)"
+          },
+          borderRadius: {
+            DEFAULT: "1rem",
+            lg: "2rem",
+            xl: "3rem",
+            full: "9999px"
+          },
+          fontFamily: {
+            sans:     ["Inter", "ui-sans-serif", "system-ui", "sans-serif"],
+            headline: ["Manrope", "ui-sans-serif", "sans-serif"],
+            body:     ["Inter", "sans-serif"],
+            label:    ["Inter", "sans-serif"]
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      vertical-align: middle;
+    }
+    html, body { font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; }
+    h1, h2, h3, h4, .font-headline { font-family: 'Manrope', ui-sans-serif, sans-serif; }
+
+    /* Sidebar nav active / hover */
+    .nav-item-active {
+      color: rgb(var(--primary));
+      font-weight: 700;
+      background: rgb(var(--surface-container-high));
+      border-right: 3px solid rgb(var(--primary));
+    }
+    .nav-item {
+      color: rgb(var(--on-surface-variant));
+      transition: all 0.15s ease;
+    }
+    .nav-item:hover {
+      background: rgb(var(--surface-container-high));
+      color: rgb(var(--on-surface));
+    }
+  </style>
+  <link rel="stylesheet" href="/static/css/app.css"/>
+  {% block head %}{% endblock %}
+</head>
+<body class="bg-surface text-on-surface selection:bg-secondary-container selection:text-on-secondary-container">
+
+{% if user %}
+<!-- ═══════════════════════ SIDEBAR ═══════════════════════ -->
+<aside class="fixed left-0 top-0 h-full w-64 flex flex-col bg-surface-container-low dark:bg-surface-container z-50">
+
+  <!-- Logo -->
+  <div class="px-6 py-6 flex items-center gap-3">
+    <div class="w-10 h-10 aurora-gradient rounded-lg flex items-center justify-center shrink-0">
+      <span class="material-symbols-outlined text-white text-xl" style="font-variation-settings:'FILL' 1;">psychology</span>
+    </div>
+    <div>
+      <div class="font-headline font-bold text-base text-on-surface leading-tight tracking-tight">AI Ops Console</div>
+      <div class="text-[10px] text-on-surface-variant uppercase tracking-wider font-medium">Financial Complaint System</div>
+    </div>
+  </div>
+
+  <!-- Navigation -->
+  <nav class="flex-1 px-3 space-y-0.5 overflow-y-auto mt-2">
+    {% if user.role == 'admin' %}
+    {% set nav_items = [
+      ("dashboard",  "/app",           "dashboard",    "Overview"),
+      ("queue",      "/queue",         "list_alt",     "Queue"),
+      ("operations", "/operations",    "monitoring",   "Operations"),
+      ("evaluation", "/evaluation",    "fact_check",   "Evaluation"),
+      ("team",       "/team",          "group",        "Team"),
+      ("settings",   "/settings",      "settings",     "Settings"),
+    ] %}
+    {% elif user.role == 'team' %}
+    {% set nav_items = [
+      ("dashboard",  "/app",           "list_alt",     "My Queue"),
+      ("settings",   "/settings",      "settings",     "Settings"),
+    ] %}
+    {% else %}
+    {% set nav_items = [
+      ("profile",      "/profile",           "person",       "Profile"),
+      ("lodge",        "/complaints/new",    "edit_square",  "Lodge Complaint"),
+      ("past_complaints", "/past-complaints","history",     "Past Complaints"),
+      ("resolutions",  "/resolutions",       "task_alt",     "Resolutions"),
+    ] %}
+    {% endif %}
+
+    {% for key, href, icon, label in nav_items %}
+    <a href="{{ href }}"
+       class="flex items-center gap-3 px-4 py-3 text-sm rounded-none tracking-tight
+              {% if active_nav == key %}nav-item-active{% else %}nav-item{% endif %}">
+      <span class="material-symbols-outlined text-[22px]">{{ icon }}</span>
+      <span class="font-medium">{{ label }}</span>
+    </a>
+    {% endfor %}
+  </nav>
+
+  <!-- Footer: CTA + User -->
+  <div class="px-4 pb-4 space-y-3 mt-4">
+    {% if user.role in ('admin', 'team') %}
+    <a href="/complaints/new"
+       class="aurora-gradient w-full text-white py-3 px-4 rounded-lg font-bold text-sm flex items-center justify-center gap-2 shadow-lg hover:opacity-90 active:scale-95 transition-all">
+      <span class="material-symbols-outlined text-sm">add</span>
+      New Complaint
+    </a>
+    {% endif %}
+    <div class="border-t border-outline-variant/20 pt-3 flex items-center gap-3">
+      <div class="w-9 h-9 rounded-full aurora-gradient flex items-center justify-center text-white text-sm font-bold shrink-0">
+        {{ user.username[0].upper() }}
+      </div>
+      <div class="overflow-hidden min-w-0 flex-1">
+        <div class="text-sm font-semibold text-on-surface truncate">{{ user.username }}</div>
+        <div class="text-[10px] text-on-surface-variant uppercase tracking-widest">{{ user.role | title }}</div>
+      </div>
+      <a href="/logout" title="Sign out"
+         class="p-1.5 text-on-surface-variant hover:text-error transition-colors shrink-0">
+        <span class="material-symbols-outlined text-lg">logout</span>
+      </a>
+    </div>
+  </div>
+</aside>
+
+<!-- ═══════════════════════ HEADER ═══════════════════════ -->
+<header class="fixed top-0 left-64 right-0 h-14 bg-surface-container-lowest/80 dark:bg-surface-container/80 backdrop-blur-xl z-40
+               flex items-center justify-between px-8 shadow-sm">
+  <div class="flex items-center gap-6">
+    <div class="relative w-72">
+      <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-lg">search</span>
+      <input class="w-full bg-surface-container-high rounded-full py-2 pl-10 pr-4 text-sm border-none
+                   focus:ring-2 focus:ring-primary/20 focus:outline-none placeholder:text-on-surface-variant/50"
+             placeholder="Search complaints…" type="text"/>
+    </div>
+  </div>
+  <div class="flex items-center gap-2">
+    <button onclick="toggleTheme()"
+            class="p-2 rounded-full text-on-surface-variant hover:bg-surface-container-high transition-all"
+            title="Toggle theme">
+      <span class="material-symbols-outlined text-lg">dark_mode</span>
+    </button>
+    <button class="p-2 rounded-full text-on-surface-variant hover:bg-surface-container-high transition-all relative">
+      <span class="material-symbols-outlined text-lg">notifications</span>
+    </button>
+    <button class="p-2 rounded-full text-on-surface-variant hover:bg-surface-container-high transition-all">
+      <span class="material-symbols-outlined text-lg">help_outline</span>
+    </button>
+  </div>
+</header>
+{% endif %}
+
+<!-- ═══════════════════════ MAIN ═══════════════════════ -->
+<main class="{% if user %}ml-64 pt-14{% endif %} min-h-screen bg-background">
+  <div class="p-8">
+    {% block content %}{% endblock %}
+  </div>
+</main>
+
+<script src="/static/js/theme.js"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

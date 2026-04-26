@@ -1,0 +1,23 @@
+# Web API
+python-dotenv>=1.0,<2
+fastapi>=0.110,<1
+uvicorn[standard]>=0.27,<1
+python-multipart>=0.0.9,<1
+
+# Data & persistence
+pydantic>=2.6,<3
+sqlalchemy>=2.0,<3
+psycopg2-binary>=2.9,<3
+pgvector>=0.2.4,<0.4
+pandas>=3.0.2
+
+# LLM stack — Google ADK + Gemini
+google-adk>=1.0.0
+google-genai>=1.0.0
+sentence-transformers>=2.2,<4
+typing-extensions>=4.9
+
+# Observability (OpenTelemetry + LangSmith with native ADK integration)
+opentelemetry-api>=1.20,<2
+opentelemetry-sdk>=1.20,<2
+langsmith[google-adk]>=0.1

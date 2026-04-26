@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Profile{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl space-y-10">
+  <header>
+    <h1 class="text-4xl md:text-5xl font-headline font-extrabold text-on-surface tracking-tight mb-2">Account settings</h1>
+    <p class="text-on-surface-variant text-lg max-w-xl">
+      Manage your identity and preferences for the financial complaint workspace.
+    </p>
+  </header>
+
+  <div class="grid grid-cols-1 xl:grid-cols-12 gap-8">
+    <section class="xl:col-span-8 flex flex-col gap-8">
+      <div class="bg-surface-container-lowest rounded-xl p-8 shadow-[0px_4px_20px_rgba(27,28,26,0.04)]">
+        <div class="flex flex-col md:flex-row gap-8 items-start">
+          <div class="w-24 h-24 rounded-xl aurora-gradient flex items-center justify-center text-white text-3xl font-headline font-bold shrink-0">
+            {{ user.username[0].upper() }}
+          </div>
+          <div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+            <div class="flex flex-col gap-2">
+              <label class="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Primary email</label>
+              <p class="py-2 text-on-surface font-semibold text-lg border-b border-outline-variant/20">{{ user.username }}</p>
+            </div>
+            <div class="flex flex-col gap-2">
+              <label class="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Role</label>
+              <span class="inline-flex px-3 py-1 bg-secondary-container text-on-secondary-container rounded-full text-xs font-bold self-start mt-1">{{ user.role | title }}</span>
+            </div>
+            {% if user.company %}
+            <div class="flex flex-col gap-2 md:col-span-2">
+              <label class="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Organization</label>
+              <p class="py-2 text-on-surface font-semibold text-lg">{{ user.company }}</p>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div class="bg-surface-container-lowest rounded-xl p-8 shadow-[0px_4px_20px_rgba(27,28,26,0.04)]">
+          <div class="flex items-center gap-4 mb-6">
+            <div class="w-10 h-10 bg-primary-fixed rounded-lg flex items-center justify-center text-primary">
+              <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;">security</span>
+            </div>
+            <h2 class="text-xl font-headline font-bold text-on-surface">Security</h2>
+          </div>
+          <p class="text-sm text-on-surface-variant leading-relaxed">
+            Password changes and advanced security controls will be available in a future release.
+          </p>
+        </div>
+        <div class="bg-surface-container-lowest rounded-xl p-8 shadow-[0px_4px_20px_rgba(27,28,26,0.04)]">
+          <div class="flex items-center gap-4 mb-6">
+            <div class="w-10 h-10 bg-tertiary-fixed rounded-lg flex items-center justify-center text-on-tertiary-fixed-variant">
+              <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;">notifications_active</span>
+            </div>
+            <h2 class="text-xl font-headline font-bold text-on-surface">Preferences</h2>
+          </div>
+          <p class="text-sm text-on-surface-variant leading-relaxed">
+            Notification preferences can be configured here in a future update.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <aside class="xl:col-span-4 space-y-4">
+      <div class="bg-surface-container-low rounded-xl p-6">
+        <h3 class="font-headline font-bold text-on-surface mb-3">Quick links</h3>
+        <ul class="space-y-2 text-sm">
+          <li><a href="/past-complaints" class="text-primary font-medium hover:underline">Past complaint</a></li>
+          <li><a href="/complaints/new" class="text-primary font-medium hover:underline">Lodge complaint</a></li>
+          <li><a href="/past-complaints" class="text-primary font-medium hover:underline">Complaint sessions</a></li>
+        </ul>
+      </div>
+    </aside>
+  </div>
+</div>
+{% endblock %}

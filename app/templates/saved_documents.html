@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% block title %}Past Complaints{% endblock %}
+
+{% block content %}
+<!-- Editorial Header -->
+<div class="flex flex-col md:flex-row justify-between items-end mb-14 gap-8">
+  <div class="max-w-2xl">
+    <p class="text-[10px] uppercase tracking-[0.15em] text-on-surface-variant mb-1">Case archive</p>
+    <h1 class="text-5xl font-headline font-extrabold tracking-tight text-on-surface mb-5 leading-none">Past Complaints</h1>
+    <p class="text-on-surface-variant text-lg leading-relaxed font-light">
+      Browse resolved cases and related materials—resolution briefs and documents tied to complaints you have filed.
+    </p>
+  </div>
+  <div class="flex gap-4 shrink-0">
+    <div class="relative">
+      <input class="pl-10 pr-4 py-3 bg-surface-container-lowest border-none rounded-full w-56 shadow-sm focus:ring-2 focus:ring-primary/20 text-sm"
+             placeholder="Filter files…" type="text"/>
+      <span class="material-symbols-outlined absolute left-3 top-3.5 text-on-surface-variant text-xl">search</span>
+    </div>
+  </div>
+</div>
+
+<!-- Bento Grid -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-8">
+
+  <!-- Featured recent document -->
+  <div class="md:col-span-8 bg-surface-container-lowest rounded-xl p-8 shadow-sm flex flex-col justify-between overflow-hidden relative group">
+    <div class="relative z-10">
+      <div class="flex justify-between items-start mb-12">
+        <span class="px-4 py-1 bg-secondary-container text-on-secondary-container text-xs font-bold rounded-full">LATEST RESOLUTION</span>
+        <span class="text-on-surface-variant text-sm">{{ today_date or '' }}</span>
+      </div>
+      {% if latest_case %}
+      <h3 class="font-headline text-3xl font-bold text-primary mb-2">Resolution_Summary_{{ latest_case.public_case_id or latest_case.id[:8] }}.pdf</h3>
+      <p class="text-on-surface-variant mb-8 max-w-md">AI-generated resolution brief for complaint {{ latest_case.public_case_id or latest_case.id[:8] }}. Includes root cause analysis and recommended action steps.</p>
+      {% else %}
+      <h3 class="font-headline text-3xl font-bold text-primary mb-2">No documents yet</h3>
+      <p class="text-on-surface-variant mb-8 max-w-md">Once your complaints are processed, AI-generated resolution documents will appear here for download.</p>
+      {% endif %}
+      <div class="flex gap-3">
+        <button class="px-6 py-3 aurora-gradient text-white rounded-full font-bold text-sm hover:opacity-90 transition-opacity flex items-center gap-2">
+          <span class="material-symbols-outlined">visibility</span> Preview
+        </button>
+        <button class="px-6 py-3 bg-surface-container-high text-primary rounded-full font-bold text-sm hover:bg-surface-container-highest transition-colors flex items-center gap-2">
+          <span class="material-symbols-outlined">download</span> Download
+        </button>
+      </div>
+    </div>
+    <div class="absolute top-0 right-0 w-64 h-full bg-gradient-to-l from-secondary-container/10 to-transparent pointer-events-none"></div>
+    <div class="absolute -bottom-20 -right-20 w-80 h-80 bg-primary/5 rounded-full blur-3xl group-hover:scale-110 transition-transform duration-700 pointer-events-none"></div>
+  </div>
+
+  <!-- Stats column -->
+  <div class="md:col-span-4 flex flex-col gap-8">
+    <div class="aurora-gradient text-white rounded-xl p-8 flex flex-col justify-center">
+      <span class="material-symbols-outlined text-4xl mb-4" style="font-variation-settings:'FILL' 1;">folder_zip</span>
+      <div class="text-4xl font-bold font-headline mb-1">{{ doc_count }}</div>
+      <div class="text-sm opacity-70 uppercase tracking-widest font-bold">Total Documents</div>
+    </div>
+    <div class="bg-surface-container-low rounded-xl p-8 flex flex-col justify-center">
+      <div class="flex items-center gap-4 mb-4">
+        <div class="w-10 h-10 rounded-lg bg-surface-container-lowest flex items-center justify-center">
+          <span class="material-symbols-outlined text-secondary">auto_awesome</span>
+        </div>
+        <span class="font-bold text-sm">AI Generated</span>
+      </div>
+      <div class="text-4xl font-bold font-headline text-on-surface">{{ ai_doc_count }}</div>
+      <div class="text-xs text-on-surface-variant mt-1">Resolution briefs</div>
+    </div>
+  </div>
+
+  <!-- Documents list -->
+  <div class="md:col-span-12 mt-4">
+    <div class="flex items-center justify-between mb-8">
+      <h2 class="font-headline text-2xl font-bold">Recent Repository</h2>
+      <div class="flex gap-2">
+        <button class="p-2 rounded-lg bg-surface-container-high text-on-surface-variant" title="Grid view">
+          <span class="material-symbols-outlined">grid_view</span>
+        </button>
+        <button class="p-2 rounded-lg aurora-gradient text-white" title="List view">
+          <span class="material-symbols-outlined">list</span>
+        </button>
+      </div>
+    </div>
+    <div class="flex flex-col gap-1">
+
+      {% if resolved_cases %}
+      {% for case in resolved_cases %}
+      <div class="group flex items-center justify-between p-6 bg-surface-container-lowest rounded-xl hover:bg-surface-container-low transition-colors cursor-pointer">
+        <div class="flex items-center gap-6">
+          <div class="w-12 h-12 bg-primary-fixed/40 rounded-lg flex items-center justify-center">
+            <span class="material-symbols-outlined text-primary">picture_as_pdf</span>
+          </div>
+          <div>
+            <h4 class="font-bold text-on-surface">Resolution_{{ case.public_case_id or case.id[:8] }}.pdf</h4>
+            <div class="flex gap-4 mt-1">
+              <span class="text-xs text-on-surface-variant flex items-center gap-1">
+                <span class="material-symbols-outlined text-xs">calendar_today</span>
+                {{ case.created_at.strftime('%b %d, %Y') if case.created_at else 'Unknown' }}
+              </span>
+              <span class="text-xs text-secondary font-medium flex items-center gap-1">
+                <span class="material-symbols-outlined text-xs" style="font-variation-settings:'FILL' 1;">check_circle</span> Resolved
+              </span>
+            </div>
+          </div>
+        </div>
+        <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <a href="/complaints/{{ case.id }}"
+             class="p-2 hover:bg-surface-container-high rounded-full transition-colors text-on-surface-variant" title="View complaint">
+            <span class="material-symbols-outlined">open_in_new</span>
+          </a>
+          <button class="p-2 hover:bg-surface-container-high rounded-full transition-colors text-on-surface-variant" title="Download">
+            <span class="material-symbols-outlined">download</span>
+          </button>
+        </div>
+      </div>
+      {% endfor %}
+      {% else %}
+      <div class="text-center py-12 text-on-surface-variant">
+        <span class="material-symbols-outlined text-4xl mb-3 block">folder_open</span>
+        <p class="text-sm">No resolved cases yet. Documents will appear here once complaints are resolved.</p>
+      </div>
+      {% endif %}
+
+    </div>
+  </div>
+
+</div>
+
+<!-- Upload section -->
+<section class="mt-16 p-12 bg-surface-container-low rounded-xl border-dashed border-2 border-outline-variant/30 flex flex-col items-center justify-center text-center">
+  <div class="w-16 h-16 bg-surface-container-lowest rounded-full flex items-center justify-center mb-6 shadow-sm">
+    <span class="material-symbols-outlined text-3xl text-primary">upload_file</span>
+  </div>
+  <h3 class="font-headline text-2xl font-bold mb-2">Ingest New Documentation</h3>
+  <p class="text-on-surface-variant max-w-sm mb-8 text-sm">Securely upload your bank statements, legal notices, or correspondence for AI analysis and record-keeping.</p>
+  <button class="px-10 py-4 aurora-gradient text-white rounded-full font-bold hover:opacity-90 active:scale-95 transition-all shadow-lg flex items-center gap-3">
+    <span class="material-symbols-outlined">add</span> Select Files
+  </button>
+  <p class="mt-4 text-xs text-on-surface-variant/60 font-medium">Supported: PDF, DOCX, JPG (Max 50 MB per file)</p>
+</section>
+{% endblock %}

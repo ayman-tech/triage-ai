@@ -1,0 +1,443 @@
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+
+{% block head %}
+<style>
+  .tab-btn.active {
+    background: rgb(var(--surface-container-lowest));
+    color: rgb(var(--primary));
+    font-weight: 700;
+    border-right: 3px solid rgb(var(--primary));
+  }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+  .cue-chip {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 9999px;
+    font-size: 11px;
+    font-family: 'Inter', monospace;
+    background: rgb(var(--surface-container-high));
+    color: rgb(var(--on-surface-variant));
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<header class="mb-8">
+  <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant mb-1">Admin · Configuration</p>
+  <h1 class="text-3xl font-headline font-extrabold text-on-surface tracking-tight">Knowledge Pack</h1>
+  <p class="text-sm text-on-surface-variant mt-1">
+    Deployment <span class="font-mono text-primary font-semibold">{{ data.deployment }}</span>
+  </p>
+</header>
+
+<div class="flex gap-6">
+
+  <!-- Sidebar Tabs -->
+  <aside class="w-52 shrink-0">
+    <nav class="bg-surface-container-low rounded-xl overflow-hidden sticky top-20">
+      {% set tabs = [
+        ("profile",     "business",       "Company Profile"),
+        ("classify",    "category",       "Classification"),
+        ("risk",        "security",       "Risk"),
+        ("compliance",  "gavel",          "Compliance"),
+        ("routing",     "alt_route",      "Routing"),
+        ("rootcause",   "troubleshoot",   "Root Cause"),
+      ] %}
+      {% for id, icon, label in tabs %}
+      <button onclick="switchTab('{{ id }}')"
+              id="tab-btn-{{ id }}"
+              class="tab-btn {% if loop.first %}active{% endif %} w-full flex items-center gap-3 px-4 py-3.5 text-sm text-on-surface-variant hover:bg-surface-container-high transition-colors text-left">
+        <span class="material-symbols-outlined text-[20px]">{{ icon }}</span>
+        <span>{{ label }}</span>
+      </button>
+      {% endfor %}
+    </nav>
+  </aside>
+
+  <!-- Content Panels -->
+  <div class="flex-1 min-w-0">
+
+    <!-- ══════════════ 1. COMPANY PROFILE ══════════════ -->
+    <div id="panel-profile" class="tab-panel active space-y-6">
+      {% set p = data.company_profile %}
+      <div class="bg-surface-container-lowest rounded-xl p-8 shadow-sm">
+        <div class="flex items-center gap-4 mb-6">
+          <div class="w-10 h-10 aurora-gradient rounded-lg flex items-center justify-center">
+            <span class="material-symbols-outlined text-white">business</span>
+          </div>
+          <div>
+            <h2 class="text-xl font-headline font-bold text-on-surface">{{ p.get('display_name', 'Company') }}</h2>
+            <p class="text-xs text-on-surface-variant">{{ p.get('customer_identity', '') | title }}</p>
+          </div>
+        </div>
+
+        <!-- Supported Products -->
+        {% if p.get('supported_products') %}
+        <div class="mb-6">
+          <div class="text-[10px] uppercase tracking-widest font-bold text-on-surface-variant mb-3">Supported Products</div>
+          <div class="flex flex-wrap gap-2">
+            {% for prod in p['supported_products'] %}
+            <span class="px-3 py-1.5 bg-primary-fixed rounded-full text-xs font-semibold text-on-primary-fixed-variant">{{ prod | title }}</span>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- Intake Operator Style -->
+        {% if p.get('intake_operator_style') %}
+        <div class="mb-6">
+          <div class="text-[10px] uppercase tracking-widest font-bold text-on-surface-variant mb-2">Intake Operator Style</div>
+          <div class="bg-surface-container-low rounded-lg p-4 text-sm text-on-surface/80 italic leading-relaxed border-l-4 border-secondary">
+            {{ p['intake_operator_style'] }}
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- Safe Reference Guidance -->
+        {% if p.get('safe_reference_guidance') %}
+        <div class="mb-6">
+          <div class="text-[10px] uppercase tracking-widest font-bold text-on-surface-variant mb-2">Safe Reference Guidance</div>
+          <div class="bg-surface-container-low rounded-lg p-4 text-sm text-on-surface/80 leading-relaxed border-l-4 border-primary">
+            {{ p['safe_reference_guidance'] }}
+          </div>
+        </div>
+        {% endif %}
+
+        {% if p.get('intake_routing_guidance') %}
+        <div>
+            <div class="text-[10px] uppercase tracking-widest font-bold text-on-surface-variant mb-3 flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-secondary text-sm">check_circle</span>
+              Routing Guidance
+            </div>
+            <ul class="space-y-2">
+              {% for tip in p['intake_routing_guidance'] %}
+              <li class="flex items-start gap-2 text-sm text-on-surface bg-secondary-container/30 rounded-lg px-3 py-2">
+                <span class="material-symbols-outlined text-secondary text-sm mt-0.5 shrink-0">arrow_right</span>
+                <span>{{ tip }}</span>
+              </li>
+              {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- ══════════════ 2. CLASSIFICATION TAXONOMY ══════════════ -->
+    <div id="panel-classify" class="tab-panel space-y-6">
+
+      <!-- Product Categories -->
+      <div class="bg-surface-container-lowest rounded-xl p-8 shadow-sm">
+        <div class="flex items-center gap-4 mb-6">
+          <div class="w-10 h-10 bg-primary-fixed rounded-lg flex items-center justify-center">
+            <span class="material-symbols-outlined text-primary">category</span>
+          </div>
+          <div>
+            <h2 class="text-xl font-headline font-bold text-on-surface">Product Categories</h2>
+            <p class="text-xs text-on-surface-variant">{{ data.product_categories | length }} categories configured</p>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {% for cat in data.product_categories %}
+          {% set sub_products = data.product_to_sub_product.get(cat.product_category, []) %}
+          <div class="bg-surface-container-low rounded-xl p-5 border-l-4 border-primary/40">
+            <div class="font-mono text-xs font-bold text-primary mb-1">{{ cat.product_category }}</div>
+            <p class="text-xs text-on-surface/80 leading-relaxed mb-3">{{ cat.definition }}</p>
+            <!-- Cues -->
+            <div class="flex flex-wrap gap-1 mb-3">
+              {% for cue in cat.cues %}
+              <span class="cue-chip">{{ cue }}</span>
+              {% endfor %}
+            </div>
+            <!-- Sub-products -->
+            {% if sub_products %}
+            <div class="mt-3 pt-3 border-t border-outline-variant/10">
+              <div class="text-[9px] uppercase tracking-widest text-on-surface-variant font-bold mb-2">Sub-products ({{ sub_products | length }})</div>
+              <div class="space-y-1.5">
+                {% for sp in sub_products %}
+                <div class="flex items-start gap-2">
+                  <span class="material-symbols-outlined text-on-surface-variant/40 text-sm mt-0.5">subdirectory_arrow_right</span>
+                  <div>
+                    <span class="font-mono text-[11px] text-on-surface font-semibold">{{ sp.sup_product }}</span>
+                    <p class="text-[10px] text-on-surface-variant leading-snug">{{ sp.definition }}</p>
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Issue Types -->
+      <div class="bg-surface-container-lowest rounded-xl p-8 shadow-sm">
+        <div class="flex items-center gap-4 mb-6">
+          <div class="w-10 h-10 bg-secondary-container rounded-lg flex items-center justify-center">
+            <span class="material-symbols-outlined text-on-secondary-container">report</span>
+          </div>
+          <div>
+            <h2 class="text-xl font-headline font-bold text-on-surface">Issue Types</h2>
+            <p class="text-xs text-on-surface-variant">{{ data.issue_types | length }} issue types configured</p>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {% for issue in data.issue_types %}
+          {% set sub_issues = data.issue_to_sub_issue.get(issue.issue_type, []) %}
+          <div class="bg-surface-container-low rounded-xl p-5 border-l-4 border-secondary/40">
+            <div class="font-mono text-xs font-bold text-secondary mb-1">{{ issue.issue_type }}</div>
+            <p class="text-xs text-on-surface/80 leading-relaxed mb-3">{{ issue.definition }}</p>
+            <div class="flex flex-wrap gap-1 mb-3">
+              {% for cue in issue.cues %}
+              <span class="cue-chip">{{ cue }}</span>
+              {% endfor %}
+            </div>
+            {% if sub_issues %}
+            <div class="mt-3 pt-3 border-t border-outline-variant/10">
+              <div class="text-[9px] uppercase tracking-widest text-on-surface-variant font-bold mb-2">Sub-issues ({{ sub_issues | length }})</div>
+              <div class="space-y-2">
+                {% for si in sub_issues %}
+                <div class="flex items-start gap-2">
+                  <span class="material-symbols-outlined text-on-surface-variant/40 text-sm mt-0.5">subdirectory_arrow_right</span>
+                  <div>
+                    <span class="font-mono text-[11px] text-on-surface font-semibold">{{ si.sub_issue }}</span>
+                    <p class="text-[10px] text-on-surface-variant leading-snug">{{ si.definition }}</p>
+                    {% if si.applicable_products %}
+                    <div class="flex flex-wrap gap-1 mt-1">
+                      {% for ap in si.applicable_products %}
+                      <span class="text-[9px] px-1.5 py-0.5 rounded bg-primary-fixed/40 text-on-primary-fixed-variant font-mono">{{ ap }}</span>
+                      {% endfor %}
+                    </div>
+                    {% endif %}
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════ 3. RISK TAXONOMY ══════════════ -->
+    <div id="panel-risk" class="tab-panel">
+      <div class="bg-surface-container-lowest rounded-xl p-8 shadow-sm">
+        <div class="flex items-center gap-4 mb-6">
+          <div class="w-10 h-10 bg-error-container rounded-lg flex items-center justify-center">
+            <span class="material-symbols-outlined text-error" style="font-variation-settings:'FILL' 1;">security</span>
+          </div>
+          <div>
+            <h2 class="text-xl font-headline font-bold text-on-surface">Severity Rubric</h2>
+            <p class="text-xs text-on-surface-variant">Risk classification thresholds</p>
+          </div>
+        </div>
+        <div class="space-y-4">
+          {% set level_styles = {
+            "critical": ("border-error", "text-error", "bg-error/8"),
+            "high":     ("border-error/50", "text-error/70", "bg-error/5"),
+            "medium":   ("border-secondary", "text-on-tertiary-container", "bg-tertiary-container/20"),
+            "low":      ("border-secondary-container", "text-secondary", "bg-secondary-container/20"),
+          } %}
+          {% for tier in data.severity_rubric %}
+          {% set styles = level_styles.get(tier.level, ("border-outline-variant", "text-on-surface-variant", "bg-surface-container-low")) %}
+          <div class="rounded-xl border-l-4 {{ styles[0] }} {{ styles[2] }} p-6">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-sm font-black uppercase tracking-widest {{ styles[1] }}">{{ tier.level }}</span>
+              {% if tier.get('escalation') %}
+              <span class="inline-flex items-center gap-1 text-[10px] font-bold text-error bg-error/10 px-2.5 py-1 rounded-full">
+                <span class="material-symbols-outlined text-xs">escalator_warning</span>
+                Escalation required
+              </span>
+              {% else %}
+              <span class="text-[10px] text-on-surface-variant/50 font-bold">No escalation</span>
+              {% endif %}
+            </div>
+            <p class="text-sm text-on-surface/80 leading-relaxed mb-4">{{ tier.description }}</p>
+            <div>
+              <div class="text-[9px] uppercase tracking-widest text-on-surface-variant font-bold mb-2">Trigger Cues</div>
+              <div class="flex flex-wrap gap-1.5">
+                {% for cue in tier.cues %}
+                <span class="cue-chip">{{ cue }}</span>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════ 4. COMPLIANCE TAXONOMY ══════════════ -->
+    <div id="panel-compliance" class="tab-panel">
+      <div class="bg-surface-container-lowest rounded-xl p-8 shadow-sm">
+        <div class="flex items-center gap-4 mb-6">
+          <div class="w-10 h-10 bg-secondary-container rounded-lg flex items-center justify-center">
+            <span class="material-symbols-outlined text-on-secondary-container">gavel</span>
+          </div>
+          <div>
+            <h2 class="text-xl font-headline font-bold text-on-surface">Policy Snippets</h2>
+            <p class="text-xs text-on-surface-variant">Compliance rules injected into the pipeline</p>
+          </div>
+        </div>
+        <div class="space-y-4">
+          {% for policy in data.policy_snippets %}
+          <div class="bg-surface-container-low rounded-xl p-6 border-l-4 border-secondary">
+            <div class="flex items-center justify-between mb-3">
+              <span class="font-mono text-xs font-bold text-primary">{{ policy.policy_id }}</span>
+            </div>
+            <p class="text-sm text-on-surface/80 leading-relaxed mb-4">{{ policy.description }}</p>
+            <div>
+              <div class="text-[9px] uppercase tracking-widest text-on-surface-variant font-bold mb-2">Trigger Cues</div>
+              <div class="flex flex-wrap gap-1.5">
+                {% for cue in policy.cues %}
+                <span class="cue-chip">{{ cue }}</span>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════ 5. ROUTING TAXONOMY ══════════════ -->
+    <div id="panel-routing" class="tab-panel space-y-6">
+      <div class="bg-surface-container-lowest rounded-xl p-8 shadow-sm">
+        <div class="flex items-center gap-4 mb-6">
+          <div class="w-10 h-10 bg-primary-fixed rounded-lg flex items-center justify-center">
+            <span class="material-symbols-outlined text-primary" style="font-variation-settings:'FILL' 1;">alt_route</span>
+          </div>
+          <div>
+            <h2 class="text-xl font-headline font-bold text-on-surface">Routing Matrix</h2>
+            <p class="text-xs text-on-surface-variant">Team assignment by product category</p>
+          </div>
+        </div>
+
+        <!-- Team by product -->
+        {% if data.routing_rules.get('team_by_product_category') %}
+        <div class="mb-6">
+          <div class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-3">Product → Team</div>
+          <div class="rounded-xl overflow-hidden border border-outline-variant/10">
+            <table class="w-full text-left">
+              <thead>
+                <tr class="bg-surface-container-low border-b border-outline-variant/10">
+                  <th class="px-5 py-3 text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">Product Category</th>
+                  <th class="px-5 py-3 text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">Assigned Team</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-outline-variant/5">
+                {% for product, team in data.routing_rules['team_by_product_category'].items() %}
+                <tr class="hover:bg-surface-container-low/50 transition-colors">
+                  <td class="px-5 py-3 font-mono text-xs font-semibold text-primary">{{ product }}</td>
+                  <td class="px-5 py-3 text-sm text-on-surface">
+                    <span class="flex items-center gap-2">
+                      <span class="w-2 h-2 rounded-full bg-secondary shrink-0"></span>
+                      {{ team | replace('_', ' ') | title }}
+                    </span>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- Escalation teams -->
+        <div class="grid grid-cols-2 gap-4">
+          {% if data.routing_rules.get('executive_team') %}
+          <div class="bg-surface-container-low rounded-xl p-5 border-l-4 border-error/40">
+            <div class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-2">Executive Team</div>
+            <div class="text-sm font-semibold text-on-surface flex items-center gap-2">
+              <span class="material-symbols-outlined text-error text-sm">star</span>
+              {{ data.routing_rules['executive_team'] | replace('_', ' ') | title }}
+            </div>
+          </div>
+          {% endif %}
+          {% if data.routing_rules.get('management_escalation_team') %}
+          <div class="bg-surface-container-low rounded-xl p-5 border-l-4 border-error/40">
+            <div class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-2">Escalation Team</div>
+            <div class="text-sm font-semibold text-on-surface flex items-center gap-2">
+              <span class="material-symbols-outlined text-error text-sm">escalator_warning</span>
+              {{ data.routing_rules['management_escalation_team'] | replace('_', ' ') | title }}
+            </div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════ 6. ROOT CAUSE TAXONOMY ══════════════ -->
+    <div id="panel-rootcause" class="tab-panel">
+      <div class="bg-surface-container-lowest rounded-xl p-8 shadow-sm">
+        <div class="flex items-center gap-4 mb-6">
+          <div class="w-10 h-10 bg-tertiary-container rounded-lg flex items-center justify-center">
+            <span class="material-symbols-outlined text-on-tertiary-container">troubleshoot</span>
+          </div>
+          <div>
+            <h2 class="text-xl font-headline font-bold text-on-surface">Root Cause Controls</h2>
+            <p class="text-xs text-on-surface-variant">Investigation triggers and control checks</p>
+          </div>
+        </div>
+        <div class="space-y-5">
+          {% for ctrl in data.root_cause_controls %}
+          <div class="bg-surface-container-low rounded-xl p-6 border-l-4 border-tertiary-container">
+            <div class="text-sm font-bold text-on-surface mb-1">{{ ctrl.root_cause_category }}</div>
+            {% if ctrl.get('root_cause_code') %}
+            <div class="font-mono text-[10px] font-bold text-on-tertiary-container mb-2">{{ ctrl.root_cause_code }}</div>
+            {% endif %}
+            <p class="text-sm text-on-surface/80 leading-relaxed mb-4">{{ ctrl.description }}</p>
+            {% if ctrl.get('business_summary') %}
+            <div class="text-xs text-on-surface-variant mb-4">{{ ctrl.business_summary }}</div>
+            {% endif %}
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <!-- Cues -->
+              <div>
+                <div class="text-[9px] uppercase tracking-widest text-on-surface-variant font-bold mb-2">Trigger Cues</div>
+                <div class="flex flex-wrap gap-1.5">
+                  {% for cue in ctrl.cues %}
+                  <span class="cue-chip">{{ cue }}</span>
+                  {% endfor %}
+                </div>
+              </div>
+              <!-- Controls to Check -->
+              {% if ctrl.get('controls_to_check') %}
+              <div>
+                <div class="text-[9px] uppercase tracking-widest text-on-surface-variant font-bold mb-2">Controls to Check</div>
+                <ul class="space-y-1.5">
+                  {% for control in ctrl['controls_to_check'] %}
+                  <li class="flex items-center gap-2 text-xs text-on-surface">
+                    <span class="material-symbols-outlined text-secondary text-sm">check_box_outline_blank</span>
+                    {{ control }}
+                  </li>
+                  {% endfor %}
+                </ul>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function switchTab(id) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-btn-' + id).classList.add('active');
+  document.getElementById('panel-' + id).classList.add('active');
+}
+</script>
+{% endblock %}

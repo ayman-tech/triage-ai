@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+{% block title %}Complaint Queue{% endblock %}
+
+{% block content %}
+<div class="max-w-[1600px] mx-auto space-y-10 -mt-2">
+<!-- Page header -->
+  <div class="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4">
+    <div>
+      <h1 class="text-3xl font-headline font-bold text-on-surface tracking-tight">Complaint Queue</h1>
+    </div>
+    <div class="flex items-center gap-4 text-sm font-medium text-on-surface-variant">
+      <span class="flex items-center gap-1.5">
+        <span class="w-2 h-2 rounded-full bg-secondary"></span>
+        {{ active_pipeline }} Active Complaints
+      </span>
+      <span class="flex items-center gap-1.5">
+        <span class="w-2 h-2 rounded-full bg-error"></span>
+        {{ critical_count }} Active Escalations
+      </span>
+    </div>
+  </div>
+
+  <!-- Active queue -->
+  <section class="space-y-6">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <h2 class="text-xl font-headline font-semibold text-primary">Active Complaints</h2>
+    </div>
+
+    <div class="bg-surface-container-lowest overflow-hidden rounded-sm ring-1 ring-outline-variant/10">
+      <table class="w-full text-left border-collapse">
+        <thead>
+          <tr class="bg-surface-container-low border-b border-surface-container-high">
+            <th class="px-6 py-4 font-label text-xs uppercase tracking-wider text-on-surface-variant font-bold">Complaint ID</th>
+            <th class="px-6 py-4 font-label text-xs uppercase tracking-wider text-on-surface-variant font-bold">Subject</th>
+            <th class="px-6 py-4 font-label text-xs uppercase tracking-wider text-on-surface-variant font-bold">Current stage</th>
+            <th class="px-6 py-4 font-label text-xs uppercase tracking-wider text-on-surface-variant font-bold">Risk Level</th>
+            <th class="px-6 py-4 font-label text-xs uppercase tracking-wider text-on-surface-variant font-bold">AI confidence</th>
+            <th class="px-6 py-4 font-label text-xs uppercase tracking-wider text-on-surface-variant font-bold">LLM Cost</th>
+            <th class="px-6 py-4 font-label text-xs uppercase tracking-wider text-on-surface-variant font-bold">Tokens</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-surface-container-low">
+          {% for case in cases %}
+          {% set st = case.status %}
+          {% if st in ['intake_complete', 'received'] %}
+            {% set _label = 'Processing' %}{% set _icon = 'autorenew' %}{% set _ring = 'bg-secondary-container' %}{% set _icon_c = 'text-on-secondary-container' %}
+          {% elif st == 'classified' %}
+            {% set _label = 'Classification' %}{% set _icon = 'segment' %}{% set _ring = 'bg-primary-container' %}{% set _icon_c = 'text-on-primary-container' %}
+          {% elif st == 'risk_assessed' %}
+            {% set _label = 'Risk analysis' %}{% set _icon = 'psychology' %}{% set _ring = 'bg-secondary-container' %}{% set _icon_c = 'text-on-secondary-container' %}
+          {% elif st == 'routed' %}
+            {% set _label = 'Routed' %}{% set _icon = 'alt_route' %}{% set _ring = 'bg-surface-container-high' %}{% set _icon_c = 'text-on-surface' %}
+          {% elif st == 'compliance_checked' %}
+            {% set _label = 'Compliance' %}{% set _icon = 'policy' %}{% set _ring = 'bg-error-container' %}{% set _icon_c = 'text-on-error-container' %}
+          {% elif st == 'resolution_proposed' %}
+            {% set _label = 'Resolution' %}{% set _icon = 'task_alt' %}{% set _ring = 'bg-secondary-container' %}{% set _icon_c = 'text-on-secondary-container' %}
+          {% else %}
+            {% set _label = st | replace('_', ' ') | title %}{% set _icon = 'hub' %}{% set _ring = 'bg-surface-container-high' %}{% set _icon_c = 'text-on-surface-variant' %}
+          {% endif %}
+          {% set _clickable = st not in ['intake_complete', 'received'] %}
+          <tr class="hover:bg-surface-container/30 transition-colors {% if _clickable %}cursor-pointer{% endif %}"
+              {% if _clickable %}onclick="window.location='/complaints/{{ case.public_case_id or case.id }}'"{% endif %}>
+            <td class="px-6 py-5">
+              <span class="font-mono text-sm font-bold text-primary">#{{ case.public_case_id or case.id[:12] }}</span>
+            </td>
+            <td class="px-6 py-5">
+              <p class="text-sm font-semibold text-on-surface leading-snug">{{ case.subject }}</p>
+              {% if case.product %}
+              <p class="text-xs text-on-surface-variant mt-0.5">{{ case.product }}</p>
+              {% endif %}
+            </td>
+            <td class="px-6 py-5">
+              <div class="flex items-center gap-2">
+                <div class="w-7 h-7 rounded-full {{ _ring }} flex items-center justify-center shrink-0">
+                  <span class="material-symbols-outlined text-base {{ _icon_c }}">{{ _icon }}</span>
+                </div>
+                <span class="text-sm font-medium text-on-surface">{{ _label }}</span>
+              </div>
+            </td>
+            <td class="px-6 py-5">
+              {% if case.risk_level %}
+              <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase
+                {% if case.risk_level == 'critical' %}bg-error-container text-on-error-container
+                {% elif case.risk_level == 'high' %}bg-error-container/50 text-error
+                {% elif case.risk_level == 'medium' %}bg-secondary-container text-on-secondary-container
+                {% else %}bg-surface-container-high text-on-surface-variant{% endif %}">
+                {{ case.risk_level }}
+              </span>
+              {% else %}
+              <span class="text-on-surface-variant/40 text-sm">—</span>
+              {% endif %}
+            </td>
+            <td class="px-6 py-5">
+              {% if case.confidence is not none %}
+              <div class="w-full max-w-[120px] space-y-1.5">
+                <div class="flex justify-between text-[10px] font-bold text-on-surface-variant">
+                  <span>{{ (case.confidence * 100) | int }}%</span>
+                </div>
+                <div class="h-1.5 w-full bg-surface-container rounded-full overflow-hidden">
+                  <div class="h-full rounded-full {% if case.confidence >= 0.8 %}bg-secondary{% elif case.confidence >= 0.5 %}bg-primary-container{% else %}bg-error{% endif %}"
+                       style="width: {{ (case.confidence * 100) | int }}%"></div>
+                </div>
+              </div>
+              {% else %}
+              <span class="text-on-surface-variant/50 text-sm">—</span>
+              {% endif %}
+            </td>
+            <td class="px-6 py-5">
+              {% if case.cost_estimate_usd %}
+              <span class="font-mono text-sm font-bold text-on-surface">${{ "%.2f"|format(case.cost_estimate_usd) }}</span>
+              {% else %}
+              <span class="text-on-surface-variant/50 text-sm">—</span>
+              {% endif %}
+            </td>
+            <td class="px-6 py-5">
+              {% if case.token_total %}
+              <span class="font-mono text-sm text-on-surface">{{ "{:,}".format(case.token_total) }}</span>
+              {% else %}
+              <span class="text-on-surface-variant/50 text-sm">—</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="7" class="px-6 py-16 text-center text-on-surface-variant">No active complaints.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Resolution history -->
+  <section class="space-y-6">
+    <div class="flex items-center justify-between">
+      <h2 class="text-xl font-headline font-semibold text-on-surface-variant">Resolved Complaints</h2>
+    </div>
+    <div class="bg-surface-container-low rounded-sm p-1">
+      <div class="bg-surface-container-lowest rounded-sm ring-1 ring-outline-variant/5 overflow-hidden">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="border-b border-surface-container">
+              <th class="px-6 py-4 font-label text-xs uppercase tracking-tight text-on-surface-variant/70 font-bold">Complaint ID</th>
+              <th class="px-6 py-4 font-label text-xs uppercase tracking-tight text-on-surface-variant/70 font-bold">Final outcome</th>
+              <th class="px-6 py-4 font-label text-xs uppercase tracking-tight text-on-surface-variant/70 font-bold">Total time</th>
+              <th class="px-6 py-4 font-label text-xs uppercase tracking-tight text-on-surface-variant/70 font-bold">Risk Level</th>
+              <th class="px-6 py-4 font-label text-xs uppercase tracking-tight text-on-surface-variant/70 font-bold">Assigned Team</th>
+              <th class="px-6 py-4 font-label text-xs uppercase tracking-tight text-on-surface-variant/70 font-bold">LLM Cost</th>
+              <th class="px-6 py-4 font-label text-xs uppercase tracking-tight text-on-surface-variant/70 font-bold">Tokens</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-surface-container">
+            {% for case in resolved_history %}
+            <tr class="hover:bg-surface-container-low/50 cursor-pointer" onclick="window.location='/complaints/{{ case.public_case_id or case.id }}'">
+              <td class="px-6 py-4 text-sm font-mono text-on-surface-variant">#{{ case.public_case_id or case.id[:12] }}</td>
+              <td class="px-6 py-4">
+                {% if case.status == 'dismissed' %}
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-container-high text-on-surface-variant text-[11px] font-bold">
+                  <span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">block</span>
+                  Dismissed
+                </span>
+                {% else %}
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary-container text-on-secondary-container text-[11px] font-bold">
+                  <span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                  Resolved
+                </span>
+                {% endif %}
+              </td>
+              <td class="px-6 py-4 text-sm text-on-surface font-medium">{{ case.total_time_str or '—' }}</td>
+              <td class="px-6 py-4">
+                {% if case.risk_level %}
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase
+                  {% if case.risk_level == 'critical' %}bg-error-container text-on-error-container
+                  {% elif case.risk_level == 'high' %}bg-error-container/50 text-error
+                  {% elif case.risk_level == 'medium' %}bg-secondary-container text-on-secondary-container
+                  {% else %}bg-surface-container-high text-on-surface-variant{% endif %}">
+                  {{ case.risk_level }}
+                </span>
+                {% else %}
+                <span class="text-on-surface-variant/40 text-sm">—</span>
+                {% endif %}
+              </td>
+              <td class="px-6 py-4 text-sm text-on-surface-variant">
+                {{ case.routed_to | replace('_', ' ') | title if case.routed_to else '—' }}
+              </td>
+              <td class="px-6 py-4 text-sm font-mono text-on-surface">
+                ${{ "%.2f"|format(case.cost_estimate_usd or 0.0) }}
+              </td>
+              <td class="px-6 py-4 text-sm font-mono text-on-surface-variant">
+                {% if case.token_total %}{{ "{:,}".format(case.token_total) }}{% else %}—{% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="7" class="px-6 py-10 text-center text-on-surface-variant text-sm">No resolved cases yet.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  {% if total_pages > 1 %}
+  <div class="flex items-center justify-between pt-2">
+    <p class="text-xs text-on-surface-variant">
+      Showing {{ ((page - 1) * limit) + 1 }}–{{ [page * limit, total] | min }} of {{ total }} complaints
+    </p>
+    <div class="flex gap-1">
+      {% if page > 1 %}
+      <a href="/queue?page={{ page - 1 }}"
+         class="px-3 py-1.5 rounded-lg text-xs bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant transition-colors">Prev</a>
+      {% endif %}
+      {% for p in range(1, total_pages + 1) %}
+        {% if p == page %}
+        <span class="px-3 py-1.5 rounded-lg text-xs aurora-gradient text-on-primary font-bold">{{ p }}</span>
+        {% elif p <= 3 or p >= total_pages - 1 or (p >= page - 1 and p <= page + 1) %}
+        <a href="/queue?page={{ p }}"
+           class="px-3 py-1.5 rounded-lg text-xs bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant transition-colors">{{ p }}</a>
+        {% elif p == 4 or p == total_pages - 2 %}
+        <span class="px-2 py-1.5 text-xs text-on-surface-variant/50">…</span>
+        {% endif %}
+      {% endfor %}
+      {% if page < total_pages %}
+      <a href="/queue?page={{ page + 1 }}"
+         class="px-3 py-1.5 rounded-lg text-xs bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant transition-colors">Next</a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}
