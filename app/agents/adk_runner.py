@@ -12,18 +12,35 @@ import logging
 import threading
 import uuid
 from collections.abc import Callable
+from contextvars import ContextVar, Token
 from typing import Any
 
 from google.genai import types as genai_types
 
-from app.agents.llm_factory import default_model_name
+from app.agents.llm_factory import candidate_model_names, default_model_name
 from app.agents.llm_json import parse_llm_json
+from app.observability.context import get_active_run
 
 logger = logging.getLogger(__name__)
 
 _session_service: Any | None = None
+_active_adk_session: ContextVar[tuple[str, str] | None] = ContextVar(
+    "active_adk_session",
+    default=None,
+)
 
 _APP_NAME = "triage-ai"
+_RETRYABLE_MODEL_ERROR_MARKERS = (
+    "429",
+    "RESOURCE_EXHAUSTED",
+    "quota",
+    "rate",
+    "retry",
+    "404",
+    "NOT_FOUND",
+    "is not found",
+    "not supported for generateContent",
+)
 
 
 def _adk_imports() -> tuple[Any, Any, Any]:
@@ -71,15 +88,52 @@ def _run_coro_sync(coro: Any) -> Any:
     return result.get("value")
 
 
+def set_adk_session(user_id: str, session_id: str) -> Token:
+    """Bind subsequent ADK agent calls in this context to one session."""
+    return _active_adk_session.set((user_id, session_id))
+
+
+def reset_adk_session(token: Token) -> None:
+    _active_adk_session.reset(token)
+
+
+def _default_session_ids() -> tuple[str, str]:
+    active_run = get_active_run()
+    if active_run is not None:
+        return "workflow", f"workflow-{active_run.run_id}"
+    return "system", f"ephemeral-{uuid.uuid4().hex}"
+
+
+async def _ensure_session(user_id: str, session_id: str) -> Any:
+    session_service = _get_session_service()
+    try:
+        existing = await session_service.get_session(
+            app_name=_APP_NAME,
+            user_id=user_id,
+            session_id=session_id,
+        )
+        if existing is not None:
+            return existing
+    except Exception:
+        logger.debug("ADK session lookup failed; creating a new session", exc_info=True)
+    return await session_service.create_session(
+        app_name=_APP_NAME,
+        user_id=user_id,
+        session_id=session_id,
+    )
+
+
 def make_llm_agent(
     *,
     name: str,
     instruction: str,
     description: str = "",
     tools: list[Callable[..., Any]] | None = None,
+    sub_agents: list[Any] | None = None,
     model_name: str | None = None,
     temperature: float = 0.0,
     output_schema: type[Any] | None = None,
+    output_key: str | None = None,
 ) -> Any:
     """Create an ADK LlmAgent using the repo's model defaults."""
     LlmAgent, _, _ = _adk_imports()
@@ -90,10 +144,13 @@ def make_llm_agent(
         "description": description,
         "instruction": instruction,
         "tools": tools or [],
+        "sub_agents": sub_agents or [],
         "generate_content_config": config,
     }
     if output_schema is not None:
         kwargs["output_schema"] = output_schema
+    if output_key is not None:
+        kwargs["output_key"] = output_key
     return LlmAgent(**kwargs)
 
 
@@ -118,23 +175,46 @@ def run_adk_json_agent(
     model_name: str | None = None,
     temperature: float = 0.0,
     output_schema: type[Any] | None = None,
+    output_key: str | None = None,
     return_evidence: bool = False,
 ) -> dict[str, Any] | tuple[dict[str, Any], dict[str, bool]]:
     """Run an ADK LlmAgent and parse the final response as a JSON object."""
-    agent = make_llm_agent(
-        name=name,
-        instruction=instruction,
-        description=description,
-        tools=tools,
-        model_name=model_name,
-        temperature=temperature,
-        output_schema=output_schema,
-    )
-    text, tool_calls = _run_coro_sync(_run_async(agent, user_message))
-    parsed = parse_llm_json(text)
-    if return_evidence:
-        return parsed, {name: True for name in sorted(tool_calls)}
-    return parsed
+    last_error: BaseException | None = None
+    for candidate_model in candidate_model_names(model_name):
+        agent = make_llm_agent(
+            name=name,
+            instruction=instruction,
+            description=description,
+            tools=tools,
+            model_name=candidate_model,
+            temperature=temperature,
+            output_schema=output_schema,
+            output_key=output_key,
+        )
+        try:
+            text, tool_calls = _run_coro_sync(_run_async(agent, user_message))
+            parsed = parse_llm_json(text)
+            if return_evidence:
+                return parsed, {name: True for name in sorted(tool_calls)}
+            return parsed
+        except Exception as exc:
+            last_error = exc
+            if not _is_retryable_model_error(exc):
+                raise
+            logger.warning(
+                "ADK agent %s failed on model %s with retryable model error: %s",
+                name,
+                candidate_model,
+                str(exc)[:300],
+            )
+    if last_error is not None:
+        raise last_error
+    raise RuntimeError("No Gemini model candidates configured.")
+
+
+def _is_retryable_model_error(exc: BaseException) -> bool:
+    text = f"{type(exc).__name__}: {exc}"
+    return any(marker.lower() in text.lower() for marker in _RETRYABLE_MODEL_ERROR_MARKERS)
 
 
 async def _run_async(agent: Any, user_message: str) -> tuple[str, set[str]]:
@@ -146,11 +226,9 @@ async def _run_async(agent: Any, user_message: str) -> tuple[str, set[str]]:
         session_service=session_service,
     )
 
-    user_id = f"system-{uuid.uuid4().hex[:8]}"
-    session = await session_service.create_session(
-        app_name=_APP_NAME,
-        user_id=user_id,
-    )
+    session_binding = _active_adk_session.get()
+    user_id, session_id = session_binding or _default_session_ids()
+    session = await _ensure_session(user_id, session_id)
 
     new_message = genai_types.Content(
         role="user",

@@ -9,17 +9,12 @@ from __future__ import annotations
 
 import logging
 from collections import Counter
-from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal
 
-import google.genai as genai
-from google.genai import types as genai_types
 from pydantic import BaseModel, ValidationError
 
-from app.agents.llm_factory import default_model_name, get_gemini_client
-from app.agents.llm_json import parse_llm_json
-from app.agents.tool_loop import record_llm_usage
+from app.agents.adk_runner import run_adk_json_agent
 
 if TYPE_CHECKING:
     from app.orchestrator.state import WorkflowState
@@ -172,21 +167,16 @@ def run_supervisor(state: dict[str, Any]) -> SupervisorDecision:
     system_prompt = _PROMPT_PATH.read_text(encoding="utf-8")
     state_summary = _build_state_summary(state)
 
-    client = get_gemini_client()
-    model = default_model_name()
-
-    contents = [
-        genai_types.Content(role="user", parts=[genai_types.Part(text=state_summary)])
-    ]
-    config = genai_types.GenerateContentConfig(system_instruction=system_prompt)
-
-    started_at = datetime.utcnow()
-    response = client.models.generate_content(model=model, contents=contents, config=config)
-    ended_at = datetime.utcnow()
-    record_llm_usage(response, model_name=model, started_at=started_at, ended_at=ended_at)
-
     try:
-        result = parse_llm_json(response.text or "")
+        result = run_adk_json_agent(
+            name="complaint_supervisor_agent",
+            description="Supervises the complaint processing workflow and chooses the next specialist agent.",
+            instruction=system_prompt,
+            user_message=state_summary,
+            tools=[],
+            temperature=0.0,
+            output_key="supervisor_decision",
+        )
         decision = SupervisorDecision(**result)
     except (ValueError, TypeError, KeyError, ValidationError) as exc:
         return _fallback_decision(state, exc, step_count)
