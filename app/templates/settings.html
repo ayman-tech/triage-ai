@@ -352,19 +352,70 @@
       </div>
     </div>
 
+    <!-- Taxonomy Upload Modal -->
+    <div id="taxonomy-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      <div class="bg-surface-container-lowest rounded-2xl shadow-2xl p-8 w-full max-w-lg mx-4">
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <h3 class="text-lg font-headline font-bold text-on-surface">Upload Taxonomy Document</h3>
+            <p class="text-xs text-on-surface-variant mt-0.5" id="taxonomy-modal-subtitle">Gemini will extract the structured data and update the taxonomy.</p>
+          </div>
+          <button onclick="closeTaxonomyModal()" class="p-1.5 rounded-lg hover:bg-surface-container-high text-on-surface-variant">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+
+        <input type="hidden" id="taxonomy-modal-type" value="">
+
+        <div class="space-y-4">
+          <div>
+            <label class="text-[10px] uppercase tracking-widest font-bold text-on-surface-variant mb-1.5 block">Taxonomy Document (PDF, Image, or Text)</label>
+            <div class="border-2 border-dashed border-outline-variant rounded-xl p-6 flex flex-col items-center gap-2 cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors"
+                 onclick="document.getElementById('taxonomy-file').click()">
+              <span class="material-symbols-outlined text-3xl text-on-surface-variant">cloud_upload</span>
+              <p class="text-sm text-on-surface-variant" id="taxonomy-file-label">Click to choose file</p>
+              <input id="taxonomy-file" type="file" accept=".pdf,.png,.jpg,.jpeg,.txt,.md" class="hidden"
+                     onchange="document.getElementById('taxonomy-file-label').textContent = this.files[0]?.name || 'Click to choose file'">
+            </div>
+          </div>
+
+          <div id="taxonomy-modal-status" class="hidden text-sm rounded-lg px-4 py-3"></div>
+
+          <div class="flex items-center gap-3 pt-2">
+            <button onclick="submitTaxonomyUpload()"
+                    class="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg bg-primary text-on-primary text-sm font-semibold hover:opacity-90 transition-opacity">
+              <span class="material-symbols-outlined text-sm">upload_file</span>
+              Upload &amp; Extract
+            </button>
+            <button onclick="closeTaxonomyModal()"
+                    class="px-5 py-2.5 rounded-lg border border-outline-variant text-sm text-on-surface-variant hover:bg-surface-container-high">
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- ══════════════ 2. CLASSIFICATION TAXONOMY ══════════════ -->
     <div id="panel-classify" class="tab-panel space-y-6">
 
       <!-- Product Categories -->
       <div class="bg-surface-container-lowest rounded-xl p-8 shadow-sm">
-        <div class="flex items-center gap-4 mb-6">
-          <div class="w-10 h-10 bg-primary-fixed rounded-lg flex items-center justify-center">
-            <span class="material-symbols-outlined text-primary">category</span>
+        <div class="flex items-center justify-between gap-4 mb-6">
+          <div class="flex items-center gap-4">
+            <div class="w-10 h-10 bg-primary-fixed rounded-lg flex items-center justify-center">
+              <span class="material-symbols-outlined text-primary">category</span>
+            </div>
+            <div>
+              <h2 class="text-xl font-headline font-bold text-on-surface">Product Categories</h2>
+              <p class="text-xs text-on-surface-variant">{{ data.product_categories | length }} categories configured</p>
+            </div>
           </div>
-          <div>
-            <h2 class="text-xl font-headline font-bold text-on-surface">Product Categories</h2>
-            <p class="text-xs text-on-surface-variant">{{ data.product_categories | length }} categories configured</p>
-          </div>
+          <button onclick="openTaxonomyModal('product_categories', 'Upload a document listing your product categories. Gemini will extract them automatically.')"
+                  class="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-primary/40 text-primary text-sm font-semibold hover:bg-primary/5 transition-colors shrink-0">
+            <span class="material-symbols-outlined text-sm">upload_file</span>
+            Upload to Update
+          </button>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           {% for cat in data.product_categories %}
@@ -410,14 +461,21 @@
 
       <!-- Issue Types -->
       <div class="bg-surface-container-lowest rounded-xl p-8 shadow-sm">
-        <div class="flex items-center gap-4 mb-6">
-          <div class="w-10 h-10 bg-secondary-container rounded-lg flex items-center justify-center">
-            <span class="material-symbols-outlined text-on-secondary-container">report</span>
+        <div class="flex items-center justify-between gap-4 mb-6">
+          <div class="flex items-center gap-4">
+            <div class="w-10 h-10 bg-secondary-container rounded-lg flex items-center justify-center">
+              <span class="material-symbols-outlined text-on-secondary-container">report</span>
+            </div>
+            <div>
+              <h2 class="text-xl font-headline font-bold text-on-surface">Issue Types</h2>
+              <p class="text-xs text-on-surface-variant">{{ data.issue_types | length }} issue types configured</p>
+            </div>
           </div>
-          <div>
-            <h2 class="text-xl font-headline font-bold text-on-surface">Issue Types</h2>
-            <p class="text-xs text-on-surface-variant">{{ data.issue_types | length }} issue types configured</p>
-          </div>
+          <button onclick="openTaxonomyModal('issue_types', 'Upload a document listing your issue types. Gemini will extract them automatically.')"
+                  class="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-secondary/40 text-on-secondary-container text-sm font-semibold hover:bg-secondary/5 transition-colors shrink-0">
+            <span class="material-symbols-outlined text-sm">upload_file</span>
+            Upload to Update
+          </button>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           {% for issue in data.issue_types %}
@@ -517,14 +575,21 @@
       </div>
 
       <div class="bg-surface-container-lowest rounded-xl p-8 shadow-sm">
-        <div class="flex items-center gap-4 mb-6">
-          <div class="w-10 h-10 bg-error-container rounded-lg flex items-center justify-center">
-            <span class="material-symbols-outlined text-error" style="font-variation-settings:'FILL' 1;">security</span>
+        <div class="flex items-center justify-between gap-4 mb-6">
+          <div class="flex items-center gap-4">
+            <div class="w-10 h-10 bg-error-container rounded-lg flex items-center justify-center">
+              <span class="material-symbols-outlined text-error" style="font-variation-settings:'FILL' 1;">security</span>
+            </div>
+            <div>
+              <h2 class="text-xl font-headline font-bold text-on-surface">Severity Rubric</h2>
+              <p class="text-xs text-on-surface-variant">Risk classification thresholds</p>
+            </div>
           </div>
-          <div>
-            <h2 class="text-xl font-headline font-bold text-on-surface">Severity Rubric</h2>
-            <p class="text-xs text-on-surface-variant">Risk classification thresholds</p>
-          </div>
+          <button onclick="openTaxonomyModal('severity_rubric', 'Upload a document describing your severity levels (low, medium, high, critical). Gemini will extract the rubric.')"
+                  class="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-error/40 text-error text-sm font-semibold hover:bg-error/5 transition-colors shrink-0">
+            <span class="material-symbols-outlined text-sm">upload_file</span>
+            Upload to Update
+          </button>
         </div>
         <div class="space-y-4">
           {% set level_styles = {
@@ -620,14 +685,21 @@
       </div>
 
       <div class="bg-surface-container-lowest rounded-xl p-8 shadow-sm">
-        <div class="flex items-center gap-4 mb-6">
-          <div class="w-10 h-10 bg-secondary-container rounded-lg flex items-center justify-center">
-            <span class="material-symbols-outlined text-on-secondary-container">gavel</span>
+        <div class="flex items-center justify-between gap-4 mb-6">
+          <div class="flex items-center gap-4">
+            <div class="w-10 h-10 bg-secondary-container rounded-lg flex items-center justify-center">
+              <span class="material-symbols-outlined text-on-secondary-container">gavel</span>
+            </div>
+            <div>
+              <h2 class="text-xl font-headline font-bold text-on-surface">Policy Snippets</h2>
+              <p class="text-xs text-on-surface-variant">Compliance rules injected into the pipeline</p>
+            </div>
           </div>
-          <div>
-            <h2 class="text-xl font-headline font-bold text-on-surface">Policy Snippets</h2>
-            <p class="text-xs text-on-surface-variant">Compliance rules injected into the pipeline</p>
-          </div>
+          <button onclick="openTaxonomyModal('policy_snippets', 'Upload a compliance policy document. Gemini will extract the policy rules and inject them into the pipeline.')"
+                  class="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-secondary/40 text-on-secondary-container text-sm font-semibold hover:bg-secondary/5 transition-colors shrink-0">
+            <span class="material-symbols-outlined text-sm">upload_file</span>
+            Upload to Update
+          </button>
         </div>
         <div class="space-y-4">
           {% for policy in data.policy_snippets %}
@@ -653,14 +725,21 @@
     <!-- ══════════════ 5. ROUTING TAXONOMY ══════════════ -->
     <div id="panel-routing" class="tab-panel space-y-6">
       <div class="bg-surface-container-lowest rounded-xl p-8 shadow-sm">
-        <div class="flex items-center gap-4 mb-6">
-          <div class="w-10 h-10 bg-primary-fixed rounded-lg flex items-center justify-center">
-            <span class="material-symbols-outlined text-primary" style="font-variation-settings:'FILL' 1;">alt_route</span>
+        <div class="flex items-center justify-between gap-4 mb-6">
+          <div class="flex items-center gap-4">
+            <div class="w-10 h-10 bg-primary-fixed rounded-lg flex items-center justify-center">
+              <span class="material-symbols-outlined text-primary" style="font-variation-settings:'FILL' 1;">alt_route</span>
+            </div>
+            <div>
+              <h2 class="text-xl font-headline font-bold text-on-surface">Routing Matrix</h2>
+              <p class="text-xs text-on-surface-variant">Team assignment by product category</p>
+            </div>
           </div>
-          <div>
-            <h2 class="text-xl font-headline font-bold text-on-surface">Routing Matrix</h2>
-            <p class="text-xs text-on-surface-variant">Team assignment by product category</p>
-          </div>
+          <button onclick="openTaxonomyModal('routing_matrix', 'Upload a document describing how complaints should be routed to teams. Gemini will extract the routing rules.')"
+                  class="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-primary/40 text-primary text-sm font-semibold hover:bg-primary/5 transition-colors shrink-0">
+            <span class="material-symbols-outlined text-sm">upload_file</span>
+            Upload to Update
+          </button>
         </div>
 
         <!-- Team by product -->
@@ -720,14 +799,21 @@
     <!-- ══════════════ 6. ROOT CAUSE TAXONOMY ══════════════ -->
     <div id="panel-rootcause" class="tab-panel">
       <div class="bg-surface-container-lowest rounded-xl p-8 shadow-sm">
-        <div class="flex items-center gap-4 mb-6">
-          <div class="w-10 h-10 bg-tertiary-container rounded-lg flex items-center justify-center">
-            <span class="material-symbols-outlined text-on-tertiary-container">troubleshoot</span>
+        <div class="flex items-center justify-between gap-4 mb-6">
+          <div class="flex items-center gap-4">
+            <div class="w-10 h-10 bg-tertiary-container rounded-lg flex items-center justify-center">
+              <span class="material-symbols-outlined text-on-tertiary-container">troubleshoot</span>
+            </div>
+            <div>
+              <h2 class="text-xl font-headline font-bold text-on-surface">Root Cause Controls</h2>
+              <p class="text-xs text-on-surface-variant">Investigation triggers and control checks</p>
+            </div>
           </div>
-          <div>
-            <h2 class="text-xl font-headline font-bold text-on-surface">Root Cause Controls</h2>
-            <p class="text-xs text-on-surface-variant">Investigation triggers and control checks</p>
-          </div>
+          <button onclick="openTaxonomyModal('root_cause_controls', 'Upload a document describing root cause categories and control checks. Gemini will extract the structured controls.')"
+                  class="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-tertiary-container text-on-tertiary-container text-sm font-semibold hover:bg-tertiary-container/20 transition-colors shrink-0">
+            <span class="material-symbols-outlined text-sm">upload_file</span>
+            Upload to Update
+          </button>
         </div>
         <div class="space-y-5">
           {% for ctrl in data.root_cause_controls %}
@@ -852,6 +938,55 @@ async function deletePolicy(entryId) {
     alert(data.detail || 'Delete failed.');
   } catch (err) {
     alert('Network error: ' + err.message);
+  }
+}
+
+// ── Taxonomy modal ────────────────────────────────────────────────────────────
+function openTaxonomyModal(taxonomyType, subtitle) {
+  document.getElementById('taxonomy-modal-type').value = taxonomyType;
+  document.getElementById('taxonomy-modal-subtitle').textContent = subtitle || 'Gemini will extract the structured data and update the taxonomy.';
+  document.getElementById('taxonomy-modal-status').classList.add('hidden');
+  document.getElementById('taxonomy-file-label').textContent = 'Click to choose file';
+  document.getElementById('taxonomy-file').value = '';
+  document.getElementById('taxonomy-modal').classList.remove('hidden');
+}
+
+function closeTaxonomyModal() {
+  document.getElementById('taxonomy-modal').classList.add('hidden');
+}
+
+document.getElementById('taxonomy-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeTaxonomyModal();
+});
+
+function showTaxonomyStatus(message, isError) {
+  const el = document.getElementById('taxonomy-modal-status');
+  el.textContent = message;
+  el.className = 'text-sm rounded-lg px-4 py-3 ' + (isError
+    ? 'bg-error/10 text-error'
+    : 'bg-secondary-container/40 text-on-secondary-container');
+  el.classList.remove('hidden');
+}
+
+async function submitTaxonomyUpload() {
+  const taxonomyType = document.getElementById('taxonomy-modal-type').value;
+  const fileInput = document.getElementById('taxonomy-file');
+  if (!fileInput.files[0]) { showTaxonomyStatus('Please select a file.', true); return; }
+
+  showTaxonomyStatus('Uploading and extracting taxonomy…', false);
+
+  const form = new FormData();
+  form.append('taxonomy_type', taxonomyType);
+  form.append('file', fileInput.files[0]);
+
+  try {
+    const res = await fetch('/api/v1/company/taxonomy/upload', { method: 'POST', body: form });
+    const data = await res.json();
+    if (!res.ok) { showTaxonomyStatus(data.detail || 'Upload failed.', true); return; }
+    showTaxonomyStatus('Taxonomy updated successfully — reloading…', false);
+    setTimeout(() => location.reload(), 800);
+  } catch (err) {
+    showTaxonomyStatus('Network error: ' + err.message, true);
   }
 }
 

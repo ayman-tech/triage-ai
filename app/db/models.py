@@ -750,3 +750,19 @@ class CompanyProfile(Base):
     company_id = Column(String(64), nullable=False, unique=True, default="mock_bank")
     profile_json = Column(Text, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class CompanyTaxonomy(Base):
+    """Stores per-company taxonomy overrides (product_categories, issue_types, etc.)."""
+
+    __tablename__ = "company_taxonomies"
+
+    id = Column(String(32), primary_key=True, default=lambda: uuid.uuid4().hex)
+    company_id = Column(String(64), nullable=False, index=True, default="mock_bank")
+    taxonomy_type = Column(String(64), nullable=False)
+    taxonomy_json = Column(Text, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        Index("ix_company_taxonomies_company_type", "company_id", "taxonomy_type", unique=True),
+    )

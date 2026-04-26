@@ -10,7 +10,8 @@
       "Bash(.venv/bin/pip install *)",
       "Bash(.venv/bin/python3 -m ensurepip --upgrade)",
       "Bash(.venv/bin/python3 -m pip install reportlab --quiet)",
-      "Bash(.venv/bin/python3 -)"
+      "Bash(.venv/bin/python3 -)",
+      "Bash(.venv/bin/python -c ' *)"
     ]
   }
 }

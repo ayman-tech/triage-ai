@@ -194,6 +194,14 @@ def init_db() -> None:
             ("cost_estimate_usd", "DOUBLE PRECISION"),
         ]
 
+        company_taxonomy_columns: list[tuple[str, str]] = [
+            ("id", "VARCHAR(32)"),
+            ("company_id", "VARCHAR(64)"),
+            ("taxonomy_type", "VARCHAR(64)"),
+            ("taxonomy_json", "TEXT"),
+            ("updated_at", "TIMESTAMP"),
+        ]
+
         for table_name, columns in (
             ("complaint_cases", complaint_case_columns),
             ("classifications", classification_columns),
@@ -207,6 +215,7 @@ def init_db() -> None:
             ("evaluation_datasets", evaluation_dataset_columns),
             ("workflow_runs", workflow_run_columns),
             ("workflow_steps", workflow_step_columns),
+            ("company_taxonomies", company_taxonomy_columns),
         ):
             existing = conn.execute(
                 text(
