@@ -26,9 +26,17 @@ logger = logging.getLogger(__name__)
 
 def _configure_langsmith() -> None:
     """Enable LangSmith tracing for Google ADK agents via the native integration."""
-    tracing_on = os.getenv("LANGSMITH_TRACING", "").lower() in ("1", "true", "yes")
-    has_key = bool(os.getenv("LANGSMITH_API_KEY"))
-    project = os.getenv("LANGSMITH_PROJECT") or "(default project)"
+    tracing_on = (
+        os.getenv("LANGSMITH_TRACING", "").lower() in ("1", "true", "yes")
+        or os.getenv("LANGCHAIN_TRACING_V2", "").lower() in ("1", "true", "yes")
+    )
+    api_key = os.getenv("LANGSMITH_API_KEY") or os.getenv("LANGCHAIN_API_KEY")
+    project = os.getenv("LANGSMITH_PROJECT") or os.getenv("LANGCHAIN_PROJECT") or "(default project)"
+    if api_key and not os.getenv("LANGSMITH_API_KEY"):
+        os.environ["LANGSMITH_API_KEY"] = api_key
+    if project != "(default project)" and not os.getenv("LANGSMITH_PROJECT"):
+        os.environ["LANGSMITH_PROJECT"] = project
+    has_key = bool(api_key)
 
     if tracing_on and has_key:
         try:
