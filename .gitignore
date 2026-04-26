@@ -1,0 +1,31 @@
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.env
+*.log
+
+# Local HTTPS dev certs (mkcert); never commit private keys
+.certs/
+.DS_Store
+
+/complaint_data/
+/complaints.csv
+
+# Generated notebooks/outputs
+*.ipynb_checkpoints/
+
+# Architecture PDFs & generated docs
+/repository_architecture.pdf
+/repository_architecture_detailed.pdf
+
+# Local CSV/report artifacts (if you generate more)
+*.csv
+!complaints 2.csv   # only if you really want to track a specific small sample
+ui_examples/
+.vscode/
+.zip
+stitch_*/
