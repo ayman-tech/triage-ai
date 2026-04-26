@@ -230,6 +230,7 @@ async def _run_async(agent: Any, user_message: str) -> tuple[str, set[str]]:
 
     session_binding = _active_adk_session.get()
     user_id, session_id = session_binding or _default_session_ids()
+    session_id = f"{session_id}:{agent.name}"
     session = await _ensure_session(user_id, session_id)
 
     new_message = genai_types.Content(

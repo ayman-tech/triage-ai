@@ -35,11 +35,8 @@ from app.utils.case_ids import ensure_case_public_id, resolve_case_record
 from app.agents.intake_engine import (
     finalize_intake_session,
     get_intake_session,
-<<<<<<< HEAD
     link_intake_costs_to_case,
-=======
     patch_intake_packet,
->>>>>>> b326213e3197f3c677f9d782375de491d6fc2ca4
     process_intake_message,
     start_intake_session,
 )
