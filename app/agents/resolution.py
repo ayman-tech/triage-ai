@@ -5,8 +5,8 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
+from app.agents.adk_runner import run_adk_json_agent
 from app.agents.narrative_context import narrative_for_agent_prompt
-from app.agents.tool_loop import run_agent_with_tools
 from app.agents.tools import (
     get_case_document_facts,
     lookup_routing_rules,
@@ -72,7 +72,15 @@ def run_resolution(
     )
 
     tools = [search_similar_resolutions, lookup_severity_rubric, lookup_routing_rules, get_case_document_facts, search_case_documents]
-    result_data = run_agent_with_tools(system_prompt, user_message, tools)
+    result_data = run_adk_json_agent(
+        name="resolution_agent",
+        description="Recommends complaint resolution actions grounded in policy, routing, documents, and precedent.",
+        instruction=system_prompt,
+        user_message=user_message,
+        tools=tools,
+        model_name=model_name,
+        temperature=temperature,
+    )
 
     _ACTION_ALIASES: dict[str, str] = {
         "investigation": "correction",

@@ -5,8 +5,8 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
+from app.agents.adk_runner import run_adk_json_agent
 from app.agents.narrative_context import narrative_for_agent_prompt
-from app.agents.tool_loop import run_agent_with_tools
 from app.agents.tools import (
     get_case_document_facts,
     lookup_severity_rubric,
@@ -65,7 +65,15 @@ def run_risk_assessment(
     )
 
     tools = [search_similar_complaints, lookup_severity_rubric, get_case_document_facts, search_case_documents]
-    result_data = run_agent_with_tools(system_prompt, user_message, tools)
+    result_data = run_adk_json_agent(
+        name="risk_agent",
+        description="Assesses complaint severity, regulatory exposure, escalation need, and financial impact.",
+        instruction=system_prompt,
+        user_message=user_message,
+        tools=tools,
+        model_name=model_name,
+        temperature=temperature,
+    )
     result = RiskAssessment(**result_data)
 
     logger.info(

@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import logging
 
+from app.agents.adk_runner import run_adk_json_agent
 from app.agents.narrative_context import narrative_for_agent_prompt
-from app.agents.tool_loop import run_agent_with_tools
 from app.agents.tools import (
     get_case_document_facts,
     lookup_root_cause_controls,
@@ -80,7 +80,15 @@ def run_root_cause_hypothesis(
     )
 
     tools = [lookup_root_cause_controls, search_similar_complaints, get_case_document_facts, search_case_documents]
-    result_data = run_agent_with_tools(_SYSTEM_PROMPT, user_message, tools)
+    result_data = run_adk_json_agent(
+        name="root_cause_agent",
+        description="Finds likely complaint root causes using control knowledge and complaint evidence.",
+        instruction=_SYSTEM_PROMPT,
+        user_message=user_message,
+        tools=tools,
+        model_name=model_name,
+        temperature=temperature,
+    )
     result = RootCauseHypothesis(**result_data)
 
     logger.info(

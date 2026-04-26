@@ -4,12 +4,9 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime
 from pathlib import Path
 
-import google.genai as genai
-from google.genai import types as genai_types
-
+from app.agents.adk_runner import run_adk_json_agent
 from app.agents.classification_context import (
     build_deterministic_signals,
     should_skip_assess_llm,
@@ -21,9 +18,6 @@ from app.agents.classification_deterministic import (
     should_skip_execute_llm,
 )
 from app.agents.classification_plan_rules import plan_from_assessment
-from app.agents.llm_factory import default_model_name, get_gemini_client
-from app.agents.llm_json import parse_llm_json
-from app.agents.tool_loop import record_llm_usage, run_agent_with_tools
 from app.knowledge import CompanyKnowledgeService
 from app.agents.tools import (
     get_case_document_facts,
@@ -136,17 +130,13 @@ def _run_assess_llm(signals: dict, case: CaseRead) -> SituationAssessment:
         f"{json.dumps(trimmed, indent=2)}"
     )
 
-    client = get_gemini_client()
-    model = default_model_name()
-    contents = [genai_types.Content(role="user", parts=[genai_types.Part(text=human)])]
-    config = genai_types.GenerateContentConfig(system_instruction=system)
-
-    started_at = datetime.utcnow()
-    resp = client.models.generate_content(model=model, contents=contents, config=config)
-    ended_at = datetime.utcnow()
-    record_llm_usage(resp, model_name=model, started_at=started_at, ended_at=ended_at)
-
-    data = parse_llm_json(resp.text or "")
+    data = run_adk_json_agent(
+        name="classification_assessment_agent",
+        description="Assesses complaint evidence quality before classification planning.",
+        instruction=system,
+        user_message=human,
+        tools=[],
+    )
     return SituationAssessment.model_validate(data)
 
 
@@ -224,17 +214,13 @@ def _select_execution_tools(plan: ClassificationPlan) -> list:
 
 
 def _run_execute_no_tools(system_prompt: str, user_message: str) -> dict:
-    client = get_gemini_client()
-    model = default_model_name()
-    contents = [genai_types.Content(role="user", parts=[genai_types.Part(text=user_message)])]
-    config = genai_types.GenerateContentConfig(system_instruction=system_prompt)
-
-    started_at = datetime.utcnow()
-    response = client.models.generate_content(model=model, contents=contents, config=config)
-    ended_at = datetime.utcnow()
-    record_llm_usage(response, model_name=model, started_at=started_at, ended_at=ended_at)
-
-    return parse_llm_json(response.text or "")
+    return run_adk_json_agent(
+        name="classification_agent",
+        description="Classifies financial complaint product and issue taxonomy from structured and narrative evidence.",
+        instruction=system_prompt,
+        user_message=user_message,
+        tools=[],
+    )
 
 
 def _v2_dual_hypothesis_eligible(assessment: SituationAssessment) -> bool:
@@ -347,13 +333,15 @@ def run_classification(
             [fn.__name__ for fn in tools],
         )
         if tools:
-            min_budget = 2 if has_documents else 1
-            max_rounds = max(min_budget, min(plan.tool_budget or min_budget, 10))
-            exec_out = run_agent_with_tools(
-                system_prompt,
-                user_message,
-                tools,
-                max_rounds=max_rounds,
+            exec_out = run_adk_json_agent(
+                name="classification_agent",
+                description=(
+                    "Classifies financial complaint product and issue taxonomy "
+                    "using retrieval, taxonomy, and document tools when needed."
+                ),
+                instruction=system_prompt,
+                user_message=user_message,
+                tools=tools,
                 return_evidence=True,
             )
             result_dict, evidence_used = exec_out  # type: ignore[misc]

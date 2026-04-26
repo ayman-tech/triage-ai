@@ -32,3 +32,8 @@ def get_gemini_client() -> genai.Client:
 def default_model_name() -> str:
     """Return the configured Gemini model name."""
     return os.getenv("GEMINI_CHAT_MODEL", _DEFAULT_MODEL)
+
+
+def get_provider() -> str:
+    """Return the configured LLM provider label for observability."""
+    return os.getenv("LLM_PROVIDER", "google")

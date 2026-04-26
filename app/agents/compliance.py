@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import logging
 
+from app.agents.adk_runner import run_adk_json_agent
 from app.agents.narrative_context import narrative_for_agent_prompt
-from app.agents.tool_loop import run_agent_with_tools
 from app.agents.tools import lookup_severity_rubric
 from app.schemas.case import CaseRead
 from app.schemas.classification import ClassificationResult
@@ -77,7 +77,15 @@ def run_compliance_check(
     )
 
     tools = [lookup_severity_rubric]
-    result = run_agent_with_tools(_SYSTEM_PROMPT, user_message, tools)
+    result = run_adk_json_agent(
+        name="compliance_agent",
+        description="Reviews classified complaint cases for regulatory and policy compliance concerns.",
+        instruction=_SYSTEM_PROMPT,
+        user_message=user_message,
+        tools=tools,
+        model_name=model_name,
+        temperature=temperature,
+    )
 
     logger.info(
         "Compliance check complete – passed=%s, flags=%d",

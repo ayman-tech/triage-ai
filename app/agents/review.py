@@ -3,14 +3,8 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime
 
-import google.genai as genai
-from google.genai import types as genai_types
-
-from app.agents.llm_factory import default_model_name, get_gemini_client
-from app.agents.llm_json import parse_llm_json
-from app.agents.tool_loop import record_llm_usage
+from app.agents.adk_runner import run_adk_json_agent
 
 logger = logging.getLogger(__name__)
 
@@ -67,17 +61,15 @@ def run_review(
     if instructions:
         user_message += f"\nSupervisor instructions: {instructions}\n"
 
-    client = get_gemini_client()
-    model = default_model_name()
-    contents = [genai_types.Content(role="user", parts=[genai_types.Part(text=user_message)])]
-    config = genai_types.GenerateContentConfig(system_instruction=_SYSTEM_PROMPT)
-
-    started_at = datetime.utcnow()
-    response = client.models.generate_content(model=model, contents=contents, config=config)
-    ended_at = datetime.utcnow()
-    record_llm_usage(response, model_name=model, started_at=started_at, ended_at=ended_at)
-
-    result = parse_llm_json(response.text or "")
+    result = run_adk_json_agent(
+        name="review_agent",
+        description="Performs final QA review over complaint classification, risk, resolution, and compliance outputs.",
+        instruction=_SYSTEM_PROMPT,
+        user_message=user_message,
+        tools=[],
+        model_name=model_name,
+        temperature=temperature,
+    )
 
     logger.info("Review complete – decision=%s", result.get("decision"))
     return result
