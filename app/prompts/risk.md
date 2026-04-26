@@ -13,7 +13,7 @@ produce a structured risk assessment.
 | -------------------------- | ----------------------------------------------- |
 | risk_level                 | low / medium / high / critical                  |
 | risk_score                 | Numeric score 0–100                             |
-| factors                    | List of {{ name, description, weight }} objects   |
+| factors                    | List of objects with `name`, `description`, and `weight` fields |
 | regulatory_risk            | true if potential regulatory exposure exists     |
 | financial_impact_estimate  | Estimated USD impact (null if unknown)           |
 | escalation_required        | true if the case needs immediate escalation      |
@@ -27,15 +27,14 @@ produce a structured risk assessment.
    whether escalation is required.
 3. Set `escalation_required = true` when the company rubric indicates escalation for
    the selected severity level.
-4. Output valid JSON matching the `RiskAssessment` schema.
+4. Factor `weight` values must be decimal proportions from 0.0 to 1.0
+   (for example, use `0.5`, not `50` or `"50%"`).
+5. Output valid JSON matching the `RiskAssessment` schema.
 
 ## Input Format
 
-```
-Narrative: {{consumer_narrative}}
-Classification: {{classification_json}}
-Similar complaints context: {{retrieved_context}}
-```
+The user message will provide the case narrative, classification JSON, and any
+retrieved complaint or document context.
 
 ## Output Format
 

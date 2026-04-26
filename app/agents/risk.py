@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
+from typing import Any
 
 from app.agents.adk_runner import run_adk_json_agent
 from app.agents.narrative_context import narrative_for_agent_prompt
@@ -24,6 +25,28 @@ _PROMPT_PATH = Path(__file__).resolve().parent.parent / "prompts" / "risk.md"
 
 def _load_prompt() -> str:
     return _PROMPT_PATH.read_text(encoding="utf-8")
+
+
+def _normalize_factor_weights(result_data: dict[str, Any]) -> dict[str, Any]:
+    """Accept percentage-style LLM weights while preserving schema semantics."""
+    factors = result_data.get("factors")
+    if not isinstance(factors, list):
+        return result_data
+
+    for factor in factors:
+        if not isinstance(factor, dict):
+            continue
+        raw_weight = factor.get("weight")
+        if isinstance(raw_weight, str):
+            raw_weight = raw_weight.strip().removesuffix("%").strip()
+        try:
+            weight = float(raw_weight)
+        except (TypeError, ValueError):
+            continue
+        if 1.0 < weight <= 100.0:
+            factor["weight"] = weight / 100.0
+
+    return result_data
 
 
 def run_risk_assessment(
@@ -74,7 +97,7 @@ def run_risk_assessment(
         model_name=model_name,
         temperature=temperature,
     )
-    result = RiskAssessment(**result_data)
+    result = RiskAssessment(**_normalize_factor_weights(result_data))
 
     logger.info(
         "Risk assessment complete – level=%s, score=%.1f",
