@@ -151,6 +151,14 @@
     <!-- Input bar -->
     <div class="px-8 pb-6 shrink-0 bg-gradient-to-t from-surface via-surface/95 to-transparent pt-4">
       <div class="bg-surface-container-lowest rounded-xl shadow-xl p-2 flex items-end gap-2">
+        <input id="document-upload-input" type="file" class="hidden" multiple
+               accept=".pdf,.png,.jpg,.jpeg,.txt,.csv,.doc,.docx,application/pdf,image/png,image/jpeg,text/plain,text/csv"/>
+        <button id="attach-btn" type="button"
+                class="mb-1.5 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-surface-container text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                title="Attach supporting documents"
+                disabled>
+          <span class="material-symbols-outlined text-xl">attach_file</span>
+        </button>
         <!-- Textarea -->
         <textarea id="chat-input"
                   rows="1"
@@ -238,6 +246,8 @@
     const messagesEl       = document.getElementById('chat-messages');
     const inputEl          = document.getElementById('chat-input');
     const sendBtn          = document.getElementById('send-btn');
+    const attachBtn        = document.getElementById('attach-btn');
+    const documentUploadEl = document.getElementById('document-upload-input');
     const errorEl          = document.getElementById('chat-error');
     const newSessionBtn    = document.getElementById('new-session-btn');
     const voiceModeEl      = document.getElementById('voice-mode');
@@ -256,8 +266,10 @@
 
     let sessionId = null;
     let busy = false;
+    let uploadingDocs = false;
     let utteranceProcessing = false;
     let currentPacket = null;
+    let uploadedDocuments = [];
 
     const stopPlayback = () => {
       if (currentAudio) { try { currentAudio.pause(); } catch (e) {} currentAudio = null; }
@@ -296,6 +308,15 @@
       micBtn.classList.toggle('bg-secondary-container', voiceLoopActive);
       micBtn.classList.toggle('text-on-secondary-container', voiceLoopActive);
       micBtn.title = vm ? (voiceLoopActive ? 'Stop voice turns' : 'Start voice turns') : 'Turn on Voice mode first';
+    };
+
+    const syncAttachAvailability = () => {
+      if (!attachBtn) return;
+      attachBtn.disabled = !sessionId || busy || uploadingDocs;
+      attachBtn.classList.toggle('text-primary', uploadedDocuments.length > 0);
+      attachBtn.title = uploadedDocuments.length
+        ? `${uploadedDocuments.length} document${uploadedDocuments.length === 1 ? '' : 's'} attached`
+        : 'Attach supporting documents';
     };
 
     const stopVoiceRecognition = () => {
@@ -465,6 +486,61 @@
       return escapeHtml(String(v));
     };
 
+    const formatBytes = (bytes) => {
+      const n = Number(bytes || 0);
+      if (!Number.isFinite(n) || n <= 0) return '';
+      if (n < 1024) return `${n} B`;
+      if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+      return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+    };
+
+    const renderDocumentList = () => {
+      if (!uploadedDocuments.length) {
+        return `
+          <div class="rounded-lg border border-dashed border-outline-variant/50 bg-surface-container-low/40 px-4 py-3 text-xs text-on-surface-variant">
+            No supporting documents attached yet.
+          </div>`;
+      }
+      return `
+        <div class="space-y-2">
+          ${uploadedDocuments.map((doc) => {
+            const name = doc.original_filename || 'Uploaded document';
+            const size = formatBytes(doc.size_bytes);
+            const status = doc.extraction_status || doc.upload_status || 'uploaded';
+            return `
+              <div class="flex items-start gap-3 rounded-lg border border-outline-variant/20 bg-surface-container-low/70 px-3 py-2.5">
+                <span class="material-symbols-outlined text-primary text-lg mt-0.5">description</span>
+                <div class="min-w-0 flex-1">
+                  <p class="truncate text-sm font-semibold text-on-surface">${escapeHtml(name)}</p>
+                  <p class="text-[10px] uppercase tracking-wide text-on-surface-variant">${escapeHtml(status)}${size ? ` · ${escapeHtml(size)}` : ''}</p>
+                </div>
+              </div>`;
+          }).join('')}
+        </div>`;
+    };
+
+    const refreshDocumentList = async () => {
+      if (!sessionId) {
+        uploadedDocuments = [];
+        syncAttachAvailability();
+        return [];
+      }
+      const resp = await fetch(`/api/v1/intake/session/${encodeURIComponent(sessionId)}/documents`, {
+        credentials: 'same-origin',
+      });
+      const docs = await resp.json().catch(() => []);
+      if (!resp.ok) throw new Error((docs && docs.detail) || 'Could not load uploaded documents.');
+      uploadedDocuments = Array.isArray(docs) ? docs : [];
+      syncAttachAvailability();
+      return uploadedDocuments;
+    };
+
+    const refreshSummaryCard = () => {
+      if (currentPacket && currentPacket.information_sufficiency === 'sufficient') {
+        upsertIntakeSummaryCard(currentPacket);
+      }
+    };
+
     /** One persistent summary card in the thread; updated whenever intake stays submission-ready. */
     const upsertIntakeSummaryCard = (packet) => {
       if (!packet) return;
@@ -557,6 +633,20 @@
               <span class="font-semibold text-on-surface">${disp(packet.account_or_reference_available)}</span>
             </div>
           </div>
+          <div class="mb-4 rounded-lg bg-surface-container-lowest border border-outline-variant/15 px-4 py-3">
+            <div class="mb-2 flex items-center justify-between gap-3">
+              <p class="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant flex items-center gap-1">
+                <span class="material-symbols-outlined text-sm">attach_file</span>
+                Supporting documents
+              </p>
+              <button type="button" id="intake-card-upload"
+                class="inline-flex items-center gap-1 rounded-md bg-surface-container px-2.5 py-1.5 text-[11px] font-bold text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors">
+                <span class="material-symbols-outlined text-sm">upload_file</span>
+                Add
+              </button>
+            </div>
+            ${renderDocumentList()}
+          </div>
           <div class="mb-4 rounded-lg bg-primary-fixed/10 border border-primary/15 px-4 py-3">
             <p class="text-[10px] font-bold uppercase tracking-wider text-primary mb-1">Desired resolution</p>
             <span class="multiline text-sm text-on-surface leading-relaxed" contenteditable="true" data-field="desired_resolution">${escapeHtml(desired || '—')}</span>
@@ -603,8 +693,10 @@
 
       const sub = document.getElementById('intake-card-submit');
       const cont = document.getElementById('intake-card-continue');
+      const upload = document.getElementById('intake-card-upload');
       if (sub) sub.addEventListener('click', (e) => { e.preventDefault(); finalize(); }, { once: false });
       if (cont) cont.addEventListener('click', (e) => { e.preventDefault(); continueRefining(); }, { once: false });
+      if (upload) upload.addEventListener('click', (e) => { e.preventDefault(); documentUploadEl?.click(); }, { once: false });
     };
 
     const removeIntakeSummaryCard = () => {
@@ -626,6 +718,35 @@
     const continueRefining = () => {
       inputEl.focus();
       inputEl.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    };
+
+    const uploadDocuments = async (files) => {
+      if (!sessionId || !files || !files.length || uploadingDocs) return;
+      setError(null);
+      uploadingDocs = true;
+      syncAttachAvailability();
+      try {
+        const form = new FormData();
+        Array.from(files).forEach((file) => form.append('files', file));
+        const resp = await fetch(`/api/v1/intake/session/${encodeURIComponent(sessionId)}/documents`, {
+          method: 'POST',
+          credentials: 'same-origin',
+          body: form,
+        });
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok) throw new Error(data.detail || data.message || 'Document upload failed.');
+        await refreshDocumentList();
+        if (currentPacket) {
+          currentPacket = { ...currentPacket, has_supporting_docs: true };
+          refreshSummaryCard();
+        }
+      } catch (e) {
+        setError(e && e.message ? e.message : 'Document upload failed.');
+      } finally {
+        uploadingDocs = false;
+        if (documentUploadEl) documentUploadEl.value = '';
+        syncAttachAvailability();
+      }
     };
 
     const setError = (msg) => {
@@ -682,11 +803,13 @@
       voiceLoopActive = false;
       stopVoiceRecognition();
       sessionId = null;
+      uploadedDocuments = [];
       messagesEl.innerHTML = '';
       removeIntakeSummaryCard();
       sendBtn.disabled = true;
       busy = true;
       syncMicAvailability();
+      syncAttachAvailability();
       try {
         const useVoice = voiceModeEl.checked;
         const resp = await fetch('/api/v1/intake/session', {
@@ -700,6 +823,7 @@
         const greeting = raw.agent_message || 'Hello.';
         appendMessage('agent', greeting);
         currentPacket = raw.packet || null;
+        await refreshDocumentList();
         sendBtn.disabled = false;
         if (useVoice && INTAKE_TTS_ENABLED) await playAgentTts(greeting);
       } catch (e) {
@@ -708,6 +832,7 @@
         busy = false;
         if (sessionId && voiceModeEl.checked) { voiceLoopActive = true; scheduleNextListen(); }
         syncMicAvailability();
+        syncAttachAvailability();
       }
     };
 
@@ -753,6 +878,7 @@
         busy = false;
         if (sessionId) sendBtn.disabled = false;
         syncMicAvailability();
+        syncAttachAvailability();
         if (voiceModeEl.checked && voiceLoopActive && sessionId) scheduleNextListen();
       }
     };
@@ -812,6 +938,8 @@
         messagesEl.innerHTML = '';
         sessionId = null;
         currentPacket = null;
+        uploadedDocuments = [];
+        syncAttachAvailability();
         showSubmitSuccessModal(body);
         await startSession();
       } catch (e) {
@@ -827,6 +955,11 @@
 
     newSessionBtn.addEventListener('click', () => startSession());
     sendBtn.addEventListener('click', () => sendMessage());
+    attachBtn?.addEventListener('click', () => {
+      if (!sessionId || busy || uploadingDocs) return;
+      documentUploadEl?.click();
+    });
+    documentUploadEl?.addEventListener('change', () => uploadDocuments(documentUploadEl.files));
 
     inputEl.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
@@ -839,6 +972,7 @@
     });
 
     syncMicAvailability();
+    syncAttachAvailability();
     startSession();
   })();
 </script>
